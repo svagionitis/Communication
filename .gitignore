@@ -1,0 +1,38 @@
+# CMake & Build Artifacts
+build/
+build-*/
+out/
+bin/
+*.o
+*.obj
+*.a
+*.lib
+*.so
+*.so.*
+*.dylib
+*.dll
+*.exe
+Ninja*
+compile_commands.json
+
+# IDE & Editor files
+.vscode/
+.idea/
+.vs/
+*.user
+*.suo
+*.user.*
+*.sln.docstates
+
+# Qt Creator & Qt Build outputs
+*.autosave
+.qmake.stash
+CMakeLists.txt.user
+
+# OS generated files
+.DS_Store
+Thumbs.db
+
+# Logs & Temporary files
+*.log
+tmp/

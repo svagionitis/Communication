@@ -1,0 +1,6 @@
+enable_testing()
+add_executable(communication_tests unit_tests.cpp)
+target_link_libraries(communication_tests PRIVATE Communication GTest::gtest GTest::gtest_main glog::glog)
+apply_compiler_flags(communication_tests)
+include(GoogleTest)
+gtest_discover_tests(communication_tests)

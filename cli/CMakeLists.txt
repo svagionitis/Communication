@@ -1,0 +1,3 @@
+add_executable(communication_cli main_cli.cpp)
+target_link_libraries(communication_cli PRIVATE Communication glog::glog)
+apply_compiler_flags(communication_cli)

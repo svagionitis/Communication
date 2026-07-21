@@ -1,0 +1,43 @@
+#!/usr/bin/env bash
+
+# Pre-commit hook to verify formatting with clang-format (WebKit style)
+
+CLANG_FORMAT=$(command -v clang-format || command -v clang-format-15 || command -v clang-format-14 || command -v clang-format-12)
+
+if [ -z "$CLANG_FORMAT" ]; then
+    echo "Warning: clang-format not found in PATH. Skipping formatting check."
+    exit 0
+fi
+
+# Get staged files or fallback to modified files
+FILES=$(git diff --cached --name-only --diff-filter=ACMR 2>/dev/null | grep -E '\.(h|hpp|c|cpp|qml)$')
+
+if [ -z "$FILES" ]; then
+    FILES=$(git ls-files -m | grep -E '\.(h|hpp|c|cpp|qml)$')
+fi
+
+if [ -z "$FILES" ]; then
+    echo "No relevant staged or modified C++/QML files to check."
+    exit 0
+fi
+
+ERRORS=0
+
+for FILE in $FILES; do
+    if [ -f "$FILE" ]; then
+        $CLANG_FORMAT --dry-run --Werror "$FILE" > /dev/null 2>&1
+        if [ $? -ne 0 ]; then
+            echo "Format error in file: $FILE"
+            echo "Please run: clang-format -i $FILE"
+            ERRORS=$((ERRORS + 1))
+        fi
+    fi
+done
+
+if [ $ERRORS -ne 0 ]; then
+    echo "Commit rejected due to code formatting errors."
+    exit 1
+fi
+
+echo "All staged C++/QML files passed clang-format check."
+exit 0
