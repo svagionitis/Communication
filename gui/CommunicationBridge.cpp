@@ -94,6 +94,19 @@ void CommunicationBridge::setBaudRate(int baud)
     }
 }
 
+QString CommunicationBridge::flowControl() const
+{
+    return m_flowControl;
+}
+
+void CommunicationBridge::setFlowControl(const QString& flow)
+{
+    if (m_flowControl != flow) {
+        m_flowControl = flow;
+        emit flowControlChanged();
+    }
+}
+
 QString CommunicationBridge::logOutput() const
 {
     return m_logOutput;
@@ -120,6 +133,13 @@ bool CommunicationBridge::connectChannel()
         SerialConfig config;
         config.portName = m_serialDevice.toStdString();
         config.baudRate = static_cast<BaudRate>(m_baudRate);
+        if (m_flowControl.contains("Hardware", Qt::CaseInsensitive)) {
+            config.flowControl = FlowControl::Hardware;
+        } else if (m_flowControl.contains("Software", Qt::CaseInsensitive)) {
+            config.flowControl = FlowControl::Software;
+        } else {
+            config.flowControl = FlowControl::None;
+        }
         m_channel = std::make_unique<SerialPort>(config);
     } else {
         appendLog("[Bridge] Unknown mode requested: " + m_mode);

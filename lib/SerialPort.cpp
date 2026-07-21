@@ -289,6 +289,28 @@ bool SerialPort::configurePlatformPort()
         break;
     }
 
+    switch (cfg.flowControl) {
+    case FlowControl::Hardware:
+        dcbSerialParams.fOutxCtsFlow = TRUE;
+        dcbSerialParams.fRtsControl = RTS_CONTROL_HANDSHAKE;
+        dcbSerialParams.fOutX = FALSE;
+        dcbSerialParams.fInX = FALSE;
+        break;
+    case FlowControl::Software:
+        dcbSerialParams.fOutxCtsFlow = FALSE;
+        dcbSerialParams.fRtsControl = RTS_CONTROL_DISABLE;
+        dcbSerialParams.fOutX = TRUE;
+        dcbSerialParams.fInX = TRUE;
+        break;
+    case FlowControl::None:
+    default:
+        dcbSerialParams.fOutxCtsFlow = FALSE;
+        dcbSerialParams.fRtsControl = RTS_CONTROL_DISABLE;
+        dcbSerialParams.fOutX = FALSE;
+        dcbSerialParams.fInX = FALSE;
+        break;
+    }
+
     if (!SetCommState(m_handle, &dcbSerialParams)) {
         LOG(ERROR) << "SerialPort SetCommState failed.";
         return false;
@@ -455,6 +477,28 @@ bool SerialPort::configurePlatformPort()
         options.c_cflag |= CSTOPB;
     } else {
         options.c_cflag &= ~CSTOPB;
+    }
+
+    switch (cfg.flowControl) {
+    case FlowControl::Hardware:
+#ifdef CRTSCTS
+        options.c_cflag |= CRTSCTS;
+#endif
+        options.c_iflag &= ~(IXON | IXOFF | IXANY);
+        break;
+    case FlowControl::Software:
+#ifdef CRTSCTS
+        options.c_cflag &= ~CRTSCTS;
+#endif
+        options.c_iflag |= (IXON | IXOFF);
+        break;
+    case FlowControl::None:
+    default:
+#ifdef CRTSCTS
+        options.c_cflag &= ~CRTSCTS;
+#endif
+        options.c_iflag &= ~(IXON | IXOFF | IXANY);
+        break;
     }
 
     options.c_cflag |= (CLOCAL | CREAD);

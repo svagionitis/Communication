@@ -28,6 +28,7 @@ class CommunicationBridge : public QObject {
     Q_PROPERTY(int port READ port WRITE setPort NOTIFY portChanged)
     Q_PROPERTY(QString serialDevice READ serialDevice WRITE setSerialDevice NOTIFY serialDeviceChanged)
     Q_PROPERTY(int baudRate READ baudRate WRITE setBaudRate NOTIFY baudRateChanged)
+    Q_PROPERTY(QString flowControl READ flowControl WRITE setFlowControl NOTIFY flowControlChanged)
     Q_PROPERTY(QString logOutput READ logOutput NOTIFY logOutputChanged)
 
 public:
@@ -51,6 +52,9 @@ public:
     int baudRate() const;
     void setBaudRate(int baud);
 
+    QString flowControl() const;
+    void setFlowControl(const QString& flow);
+
     QString logOutput() const;
 
     Q_INVOKABLE bool connectChannel();
@@ -65,6 +69,7 @@ signals:
     void portChanged();
     void serialDeviceChanged();
     void baudRateChanged();
+    void flowControlChanged();
     void logOutputChanged();
     void dataReceived(const QString& text);
 
@@ -77,6 +82,7 @@ private:
     int m_port {8080};
     QString m_serialDevice {"/dev/ttyUSB0"};
     int m_baudRate {115200};
+    QString m_flowControl {"None"};
     QString m_logOutput;
 
     mutable std::mutex m_channelMutex;

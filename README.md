@@ -13,7 +13,7 @@ Zero third-party network/serial dependencies (uses pure native OS Winsock2 & Win
 - **Strict RAII Resource Management**: Complete exception safety, automatic thread joining, and resource cleanup on object destruction.
 - **TCP Client & Server Keep-Alive**: Native cross-platform TCP Keep-Alive options (`SO_KEEPALIVE`, `TCP_KEEPIDLE`, `TCP_KEEPINTVL`, `TCP_KEEPCNT`, `WSAIoctl`) to detect dead sockets and broken connections across firewalls.
 - **Thread-Safe & Async**: Non-blocking background worker threads handle incoming byte streams without locking main application or GUI threads.
-- **Full Serial Baud Rate Support**: Full support for standard and custom baud rates ranging from `110` up to `4,000,000` baud, with configurable parity, stop bits, and data bits.
+- **Full Serial Baud Rate & Flow Control Support**: Full support for standard and custom baud rates ranging from `110` up to `4,000,000` baud, with configurable parity, stop bits, data bits, and flow control (`None`, `Hardware RTS/CTS`, `Software XON/XOFF`).
 - **CLI Client**: Built-in interactive command-line tool (`communication_cli`) built by default.
 - **Qt6 QML GUI Client**: Modern hardware-accelerated GUI application (`communication_gui`) built optionally with `-DBUILD_GUI=ON`.
 - **Quality Assurance & Code Style**:

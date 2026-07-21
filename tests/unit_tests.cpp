@@ -294,6 +294,25 @@ TEST(MockSerialPortTest, SendAndSimulateReceive)
     serial.close();
 }
 
+TEST(MockSerialPortTest, FlowControlConfiguration)
+{
+    SerialConfig cfg;
+    cfg.portName = "COM_MOCK";
+    cfg.baudRate = BaudRate::B115200;
+    cfg.flowControl = FlowControl::Hardware;
+
+    MockSerialPort serial(cfg);
+    ASSERT_TRUE(serial.open());
+    EXPECT_TRUE(serial.isOpen());
+    serial.close();
+
+    cfg.flowControl = FlowControl::Software;
+    MockSerialPort serialSoft(cfg);
+    ASSERT_TRUE(serialSoft.open());
+    EXPECT_TRUE(serialSoft.isOpen());
+    serialSoft.close();
+}
+
 // ============================================================================
 // 5. Polymorphic ICommunication Base Vector Test
 // ============================================================================

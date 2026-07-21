@@ -35,6 +35,7 @@ int main(int argc, char* argv[])
     uint16_t port = 8080;
     std::string device = "/dev/ttyUSB0";
     uint32_t baud = 115200;
+    std::string flowControl = "none";
     bool interactive = false;
 
     for (int i = 1; i < argc; ++i) {
@@ -49,6 +50,8 @@ int main(int argc, char* argv[])
             device = arg.substr(9);
         } else if (arg.rfind("--baud=", 0) == 0) {
             baud = static_cast<uint32_t>(std::stoul(arg.substr(7)));
+        } else if (arg.rfind("--flowcontrol=", 0) == 0) {
+            flowControl = arg.substr(14);
         } else if (arg == "--interactive") {
             interactive = true;
         } else if (arg == "--help") {
@@ -75,8 +78,16 @@ int main(int argc, char* argv[])
         Communication::SerialConfig config;
         config.portName = device;
         config.baudRate = static_cast<Communication::BaudRate>(baud);
+        if (flowControl == "hardware") {
+            config.flowControl = Communication::FlowControl::Hardware;
+        } else if (flowControl == "software") {
+            config.flowControl = Communication::FlowControl::Software;
+        } else {
+            config.flowControl = Communication::FlowControl::None;
+        }
         channel = std::make_unique<Communication::SerialPort>(config);
-        std::cout << "[CLI] Initialized Serial port on " << device << " @ " << baud << " baud\n";
+        std::cout << "[CLI] Initialized Serial port on " << device << " @ " << baud << " baud (flow: " << flowControl
+                  << ")\n";
     } else {
         std::cerr << "Unknown mode: " << mode << "\n";
         printUsage(argv[0]);

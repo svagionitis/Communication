@@ -2,7 +2,7 @@ import QtQuick import QtQuick.Controls import QtQuick.Layouts import Communicati
 
     Window{id:root width: 900 height: 650 visible: true title: "Communication Library - Qt6 QML GUI Client" color: "#1e1e2e"
 
-           CommunicationBridge{id:bridge mode:modeCombo.currentText host:hostField.text port:parseInt(portField.text) serialDevice:deviceField.text baudRate:parseInt(baudField.text) }
+           CommunicationBridge{id:bridge mode:modeCombo.currentText host:hostField.text port:parseInt(portField.text) serialDevice:deviceField.text baudRate:parseInt(baudField.text) flowControl:flowCombo.currentText }
 
                                                                                                       ColumnLayout{anchors.fill:parent anchors.margins: 16 spacing: 16
 
@@ -67,12 +67,13 @@ Label {text: "Serial Device:" color: "#cdd6f4" visible: modeCombo.currentText ==
 
 Label {text: "Baud Rate:" color: "#cdd6f4" visible: modeCombo.currentText == = "SERIAL"} ComboBox
 {
-id:
-    baudField model
-        : ["9600", "19200", "38400", "57600", "115200", "230400", "460800", "921600",
-           "1000000"] currentIndex : 4 Layout.fillWidth : true visible
-        : modeCombo.currentText == = "SERIAL" enabled : !bridge.isConnected
-}
+    Label {text: "Flow Control:" color: "#cdd6f4" visible: modeCombo.currentText == = "SERIAL"} ComboBox
+    {
+    id:
+        flowCombo model : ["None", "Hardware (RTS/CTS)",
+                           "Software (XON/XOFF)"] currentIndex : 0 Layout.fillWidth : true visible
+            : modeCombo.currentText == = "SERIAL" enabled : !bridge.isConnected
+    }
 }
 }
 

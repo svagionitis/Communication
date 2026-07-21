@@ -60,6 +60,15 @@ enum class StopBits { One, OnePointFive, Two };
 enum class DataBits { Five = 5, Six = 6, Seven = 7, Eight = 8 };
 
 /**
+ * @brief Serial flow control setting.
+ */
+enum class FlowControl {
+    None,
+    Hardware, // RTS/CTS
+    Software  // XON/XOFF
+};
+
+/**
  * @brief Configuration parameters for native TCP keep-alive socket options.
  */
 struct TcpKeepAliveConfig {
@@ -98,6 +107,7 @@ struct SerialConfig {
     DataBits dataBits {DataBits::Eight};
     Parity parity {Parity::None};
     StopBits stopBits {StopBits::One};
+    FlowControl flowControl {FlowControl::None};
     uint32_t timeoutMs {1000};
 };
 
