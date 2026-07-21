@@ -67,6 +67,10 @@ bool TcpServer::open()
     m_listenSocket = listenSock;
     m_isOpen.store(true);
     m_isRunning.store(true);
+    {
+        std::lock_guard<std::mutex> lock(m_statsMutex);
+        m_connectTime = std::chrono::system_clock::now();
+    }
 
     m_acceptThread = std::thread(&TcpServer::acceptLoop, this);
     LOG(INFO) << "TcpServer listening on port " << cfg.port;
@@ -132,6 +136,10 @@ bool TcpServer::send(std::string_view data)
             totalSent += static_cast<size_t>(sent);
             bytesRemaining -= static_cast<size_t>(sent);
         }
+        if (totalSent > 0) {
+            m_bytesSent.fetch_add(totalSent);
+            m_packetsSent.fetch_add(1);
+        }
     }
     return allSent;
 }
@@ -156,6 +164,43 @@ bool TcpServer::isOpen() const
 bool TcpServer::isConnected() const
 {
     return isOpen();
+}
+
+ConnectionStats TcpServer::stats() const
+{
+    ConnectionStats s;
+    s.bytesSent = m_bytesSent.load();
+    s.bytesReceived = m_bytesReceived.load();
+    s.packetsSent = m_packetsSent.load();
+    s.packetsReceived = m_packetsReceived.load();
+
+    {
+        std::lock_guard<std::mutex> lock(m_statsMutex);
+        s.connectTimestamp = m_connectTime;
+    }
+
+    if (m_isOpen.load() && s.connectTimestamp != std::chrono::system_clock::time_point {}) {
+        auto durationSec = std::chrono::duration_cast<std::chrono::duration<double>>(std::chrono::system_clock::now() -
+                                                                                     s.connectTimestamp)
+                               .count();
+        if (durationSec > 0.0001) {
+            s.sendBytesPerSec = static_cast<double>(s.bytesSent) / durationSec;
+            s.rxBytesPerSec = static_cast<double>(s.bytesReceived) / durationSec;
+        }
+    }
+    return s;
+}
+
+void TcpServer::resetStats()
+{
+    m_bytesSent.store(0);
+    m_bytesReceived.store(0);
+    m_packetsSent.store(0);
+    m_packetsReceived.store(0);
+    {
+        std::lock_guard<std::mutex> lock(m_statsMutex);
+        m_connectTime = std::chrono::system_clock::now();
+    }
 }
 
 void TcpServer::setConfig(const TcpConfig& config)
@@ -233,6 +278,8 @@ void TcpServer::clientReceiveLoop(Platform::SocketHandle clientSock)
         int bytesRead = ::recv(clientSock, reinterpret_cast<char*>(buffer.data()), static_cast<int>(buffer.size()), 0);
 
         if (bytesRead > 0) {
+            m_bytesReceived.fetch_add(static_cast<uint64_t>(bytesRead));
+            m_packetsReceived.fetch_add(1);
             DataReceivedCallback cb;
             DataViewCallback vcb;
             {

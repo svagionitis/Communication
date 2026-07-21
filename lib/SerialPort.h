@@ -40,6 +40,11 @@ public:
     SerialPort(SerialPort&& other) noexcept;
     SerialPort& operator=(SerialPort&& other) noexcept;
 
+    bool isOpen() const override;
+    bool isConnected() const override;
+
+    ConnectionStats stats() const override;
+    void resetStats() override;
     bool open() override;
     bool connect() override;
     void close() override;
@@ -66,17 +71,6 @@ public:
      * @param callback Function called when Serial port opens or closes.
      */
     void registerConnectionStateCallback(ConnectionStateCallback callback) override;
-
-    /**
-     * @brief Checks if serial port is open.
-     * @return True if open.
-     */
-    bool isOpen() const override;
-
-    /**
-     * @brief Alias for isOpen().
-     */
-    bool isConnected() const override;
 
     /**
      * @brief Updates Serial port configuration.
@@ -116,6 +110,14 @@ private:
 
     std::thread m_receiveThread;
     std::atomic<bool> m_isRunning {false};
+
+    mutable std::mutex m_statsMutex;
+    std::atomic<uint64_t> m_bytesSent {0};
+    std::atomic<uint64_t> m_bytesReceived {0};
+    std::atomic<uint64_t> m_packetsSent {0};
+    std::atomic<uint64_t> m_packetsReceived {0};
+    std::atomic<uint64_t> m_reconnectCount {0};
+    std::chrono::system_clock::time_point m_connectTime {};
 };
 
 } // namespace Communication

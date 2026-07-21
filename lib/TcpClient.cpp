@@ -180,6 +180,10 @@ bool TcpClient::openInternal()
 
     m_socket = sock;
     m_isConnected.store(true);
+    {
+        std::lock_guard<std::mutex> lock(m_statsMutex);
+        m_connectTime = std::chrono::system_clock::now();
+    }
     LOG(INFO) << "TcpClient successfully connected to " << cfg.host << ":" << cfg.port;
     return true;
 }
@@ -256,6 +260,9 @@ bool TcpClient::send(std::string_view data)
         totalSent += static_cast<size_t>(sent);
         bytesRemaining -= static_cast<size_t>(sent);
     }
+
+    m_bytesSent.fetch_add(totalSent);
+    m_packetsSent.fetch_add(1);
     return true;
 }
 
@@ -279,6 +286,45 @@ bool TcpClient::isOpen() const
 bool TcpClient::isConnected() const
 {
     return isOpen();
+}
+
+ConnectionStats TcpClient::stats() const
+{
+    ConnectionStats s;
+    s.bytesSent = m_bytesSent.load();
+    s.bytesReceived = m_bytesReceived.load();
+    s.packetsSent = m_packetsSent.load();
+    s.packetsReceived = m_packetsReceived.load();
+    s.reconnectCount = m_reconnectCount.load();
+
+    {
+        std::lock_guard<std::mutex> lock(m_statsMutex);
+        s.connectTimestamp = m_connectTime;
+    }
+
+    if (m_isConnected.load() && s.connectTimestamp != std::chrono::system_clock::time_point {}) {
+        auto durationSec = std::chrono::duration_cast<std::chrono::duration<double>>(std::chrono::system_clock::now() -
+                                                                                     s.connectTimestamp)
+                               .count();
+        if (durationSec > 0.0001) {
+            s.sendBytesPerSec = static_cast<double>(s.bytesSent) / durationSec;
+            s.rxBytesPerSec = static_cast<double>(s.bytesReceived) / durationSec;
+        }
+    }
+    return s;
+}
+
+void TcpClient::resetStats()
+{
+    m_bytesSent.store(0);
+    m_bytesReceived.store(0);
+    m_packetsSent.store(0);
+    m_packetsReceived.store(0);
+    m_reconnectCount.store(0);
+    {
+        std::lock_guard<std::mutex> lock(m_statsMutex);
+        m_connectTime = std::chrono::system_clock::now();
+    }
 }
 
 void TcpClient::setConfig(const TcpConfig& config)
@@ -328,6 +374,8 @@ void TcpClient::receiveLoop()
         int bytesRead = ::recv(sockHandle, reinterpret_cast<char*>(buffer.data()), static_cast<int>(buffer.size()), 0);
 
         if (bytesRead > 0) {
+            m_bytesReceived.fetch_add(static_cast<uint64_t>(bytesRead));
+            m_packetsReceived.fetch_add(1);
             DataReceivedCallback cb;
             DataViewCallback vcb;
             {
@@ -370,6 +418,7 @@ void TcpClient::receiveLoop()
 
             while (m_isRunning.load()) {
                 attempt++;
+                m_reconnectCount.fetch_add(1);
                 if (cfg.autoReconnect.maxRetries > 0 && attempt > cfg.autoReconnect.maxRetries) {
                     LOG(WARNING) << "TcpClient max reconnect retries reached (" << cfg.autoReconnect.maxRetries << ").";
                     break;

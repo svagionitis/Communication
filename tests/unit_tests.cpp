@@ -320,6 +320,37 @@ TEST(TcpCommunicationTest, ZeroCopyViewCallback)
 }
 
 // ============================================================================
+// 4. Connection Statistics & Metrics Tests
+// ============================================================================
+TEST(ConnectionStatsTest, TcpClientAndServerTelemetry)
+{
+    TcpConfig cfg;
+    cfg.port = 9892;
+
+    TcpServer server(cfg);
+    ASSERT_TRUE(server.open());
+
+    TcpClient client(cfg);
+    ASSERT_TRUE(client.open());
+
+    std::this_thread::sleep_for(std::chrono::milliseconds(20));
+
+    EXPECT_TRUE(client.send("TEST_STATS_PAYLOAD"));
+    std::this_thread::sleep_for(std::chrono::milliseconds(50));
+
+    auto cStats = client.stats();
+    EXPECT_EQ(cStats.bytesSent, 18u);
+    EXPECT_EQ(cStats.packetsSent, 1u);
+
+    auto sStats = server.stats();
+    EXPECT_EQ(sStats.bytesReceived, 18u);
+    EXPECT_EQ(sStats.packetsReceived, 1u);
+
+    client.close();
+    server.close();
+}
+
+// ============================================================================
 // 3. UDP Socket Loopback Test
 // ============================================================================
 

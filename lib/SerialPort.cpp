@@ -152,6 +152,10 @@ bool SerialPort::openInternal()
     }
 
     m_isOpen.store(true);
+    {
+        std::lock_guard<std::mutex> lock(m_statsMutex);
+        m_connectTime = std::chrono::system_clock::now();
+    }
     LOG(INFO) << "SerialPort " << cfg.portName << " opened successfully.";
     return true;
 }
@@ -219,14 +223,27 @@ bool SerialPort::send(std::string_view data)
         return false;
     }
 
+    bool success = false;
+    size_t bytesSentCount = 0;
+
 #ifdef _WIN32
     DWORD bytesWritten = 0;
     BOOL result = WriteFile(m_handle, data.data(), static_cast<DWORD>(data.size()), &bytesWritten, nullptr);
-    return result && (bytesWritten == data.size());
+    success = result && (bytesWritten == data.size());
+    bytesSentCount = static_cast<size_t>(bytesWritten);
 #else
     ssize_t bytesWritten = ::write(m_handle, data.data(), data.size());
-    return bytesWritten == static_cast<ssize_t>(data.size());
+    success = (bytesWritten == static_cast<ssize_t>(data.size()));
+    if (bytesWritten > 0) {
+        bytesSentCount = static_cast<size_t>(bytesWritten);
+    }
 #endif
+
+    if (bytesSentCount > 0) {
+        m_bytesSent.fetch_add(bytesSentCount);
+        m_packetsSent.fetch_add(1);
+    }
+    return success;
 }
 
 void SerialPort::registerReceiveCallback(DataReceivedCallback callback)
@@ -249,6 +266,45 @@ bool SerialPort::isOpen() const
 bool SerialPort::isConnected() const
 {
     return isOpen();
+}
+
+ConnectionStats SerialPort::stats() const
+{
+    ConnectionStats s;
+    s.bytesSent = m_bytesSent.load();
+    s.bytesReceived = m_bytesReceived.load();
+    s.packetsSent = m_packetsSent.load();
+    s.packetsReceived = m_packetsReceived.load();
+    s.reconnectCount = m_reconnectCount.load();
+
+    {
+        std::lock_guard<std::mutex> lock(m_statsMutex);
+        s.connectTimestamp = m_connectTime;
+    }
+
+    if (m_isOpen.load() && s.connectTimestamp != std::chrono::system_clock::time_point {}) {
+        auto durationSec = std::chrono::duration_cast<std::chrono::duration<double>>(std::chrono::system_clock::now() -
+                                                                                     s.connectTimestamp)
+                               .count();
+        if (durationSec > 0.0001) {
+            s.sendBytesPerSec = static_cast<double>(s.bytesSent) / durationSec;
+            s.rxBytesPerSec = static_cast<double>(s.bytesReceived) / durationSec;
+        }
+    }
+    return s;
+}
+
+void SerialPort::resetStats()
+{
+    m_bytesSent.store(0);
+    m_bytesReceived.store(0);
+    m_packetsSent.store(0);
+    m_packetsReceived.store(0);
+    m_reconnectCount.store(0);
+    {
+        std::lock_guard<std::mutex> lock(m_statsMutex);
+        m_connectTime = std::chrono::system_clock::now();
+    }
 }
 
 void SerialPort::setConfig(const SerialConfig& config)
@@ -588,6 +644,8 @@ void SerialPort::receiveLoop()
         BOOL success = ReadFile(h, buffer.data(), static_cast<DWORD>(buffer.size()), &bytesRead, nullptr);
         if (success) {
             if (bytesRead > 0) {
+                m_bytesReceived.fetch_add(static_cast<uint64_t>(bytesRead));
+                m_packetsReceived.fetch_add(1);
                 DataReceivedCallback cb;
                 DataViewCallback vcb;
                 {
@@ -612,6 +670,8 @@ void SerialPort::receiveLoop()
 #else
         ssize_t bytesRead = ::read(h, buffer.data(), buffer.size());
         if (bytesRead > 0) {
+            m_bytesReceived.fetch_add(static_cast<uint64_t>(bytesRead));
+            m_packetsReceived.fetch_add(1);
             DataReceivedCallback cb;
             DataViewCallback vcb;
             {
@@ -653,6 +713,7 @@ void SerialPort::receiveLoop()
 
             while (m_isRunning.load()) {
                 attempt++;
+                m_reconnectCount.fetch_add(1);
                 if (cfg.autoReconnect.maxRetries > 0 && attempt > cfg.autoReconnect.maxRetries) {
                     LOG(WARNING) << "SerialPort max reconnect retries reached (" << cfg.autoReconnect.maxRetries
                                  << ").";

@@ -50,6 +50,9 @@ public:
     bool isOpen() const override;
     bool isConnected() const override;
 
+    ConnectionStats stats() const override;
+    void resetStats() override;
+
     void setConfig(const TcpConfig& config);
     TcpConfig config() const;
 
@@ -74,6 +77,13 @@ private:
 
     std::thread m_acceptThread;
     std::vector<std::thread> m_clientThreads;
+
+    mutable std::mutex m_statsMutex;
+    std::atomic<uint64_t> m_bytesSent {0};
+    std::atomic<uint64_t> m_bytesReceived {0};
+    std::atomic<uint64_t> m_packetsSent {0};
+    std::atomic<uint64_t> m_packetsReceived {0};
+    std::chrono::system_clock::time_point m_connectTime {};
 };
 
 } // namespace Communication

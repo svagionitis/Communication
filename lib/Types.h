@@ -5,6 +5,7 @@
 
 #pragma once
 
+#include <chrono>
 #include <cstdint>
 #include <string>
 #include <variant>
@@ -122,6 +123,20 @@ struct SerialConfig {
     FlowControl flowControl {FlowControl::None};
     uint32_t timeoutMs {1000};
     ReconnectPolicy autoReconnect;
+};
+
+/**
+ * @brief Telemetry metrics and throughput statistics for a communication channel.
+ */
+struct ConnectionStats {
+    uint64_t bytesSent {0};
+    uint64_t bytesReceived {0};
+    uint64_t packetsSent {0};
+    uint64_t packetsReceived {0};
+    uint64_t reconnectCount {0};
+    std::chrono::system_clock::time_point connectTimestamp {};
+    double sendBytesPerSec {0.0};
+    double rxBytesPerSec {0.0};
 };
 
 /**

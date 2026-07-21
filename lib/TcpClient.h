@@ -103,6 +103,17 @@ public:
     bool isConnected() const override;
 
     /**
+     * @brief Gets current TCP client statistics.
+     * @return ConnectionStats object.
+     */
+    ConnectionStats stats() const override;
+
+    /**
+     * @brief Resets TCP client statistics.
+     */
+    void resetStats() override;
+
+    /**
      * @brief Updates TCP client configuration.
      * @param config New TcpConfig settings.
      */
@@ -139,6 +150,14 @@ private:
 
     std::thread m_receiveThread;
     std::atomic<bool> m_isRunning {false};
+
+    mutable std::mutex m_statsMutex;
+    std::atomic<uint64_t> m_bytesSent {0};
+    std::atomic<uint64_t> m_bytesReceived {0};
+    std::atomic<uint64_t> m_packetsSent {0};
+    std::atomic<uint64_t> m_packetsReceived {0};
+    std::atomic<uint64_t> m_reconnectCount {0};
+    std::chrono::system_clock::time_point m_connectTime {};
 };
 
 } // namespace Communication

@@ -119,6 +119,10 @@ bool UdpSocket::open()
     m_isRunning.store(true);
 
     m_receiveThread = std::thread(&UdpSocket::receiveLoop, this);
+    {
+        std::lock_guard<std::mutex> lock(m_statsMutex);
+        m_connectTime = std::chrono::system_clock::now();
+    }
     LOG(INFO) << "UdpSocket opened successfully on local port " << cfg.localPort;
     return true;
 }
@@ -183,6 +187,9 @@ bool UdpSocket::sendTo(const std::vector<uint8_t>& data, const std::string& host
         LOG(ERROR) << "UdpSocket sendTo error: " << Platform::getSocketErrorString();
         return false;
     }
+
+    m_bytesSent.fetch_add(static_cast<uint64_t>(sent));
+    m_packetsSent.fetch_add(1);
     return true;
 }
 
@@ -206,6 +213,43 @@ bool UdpSocket::isOpen() const
 bool UdpSocket::isConnected() const
 {
     return isOpen();
+}
+
+ConnectionStats UdpSocket::stats() const
+{
+    ConnectionStats s;
+    s.bytesSent = m_bytesSent.load();
+    s.bytesReceived = m_bytesReceived.load();
+    s.packetsSent = m_packetsSent.load();
+    s.packetsReceived = m_packetsReceived.load();
+
+    {
+        std::lock_guard<std::mutex> lock(m_statsMutex);
+        s.connectTimestamp = m_connectTime;
+    }
+
+    if (m_isOpen.load() && s.connectTimestamp != std::chrono::system_clock::time_point {}) {
+        auto durationSec = std::chrono::duration_cast<std::chrono::duration<double>>(std::chrono::system_clock::now() -
+                                                                                     s.connectTimestamp)
+                               .count();
+        if (durationSec > 0.0001) {
+            s.sendBytesPerSec = static_cast<double>(s.bytesSent) / durationSec;
+            s.rxBytesPerSec = static_cast<double>(s.bytesReceived) / durationSec;
+        }
+    }
+    return s;
+}
+
+void UdpSocket::resetStats()
+{
+    m_bytesSent.store(0);
+    m_bytesReceived.store(0);
+    m_packetsSent.store(0);
+    m_packetsReceived.store(0);
+    {
+        std::lock_guard<std::mutex> lock(m_statsMutex);
+        m_connectTime = std::chrono::system_clock::now();
+    }
 }
 
 void UdpSocket::setConfig(const UdpConfig& config)
@@ -258,6 +302,8 @@ void UdpSocket::receiveLoop()
                                    0, reinterpret_cast<struct sockaddr*>(&srcAddr), &srcLen);
 
         if (bytesRead > 0) {
+            m_bytesReceived.fetch_add(static_cast<uint64_t>(bytesRead));
+            m_packetsReceived.fetch_add(1);
             DataReceivedCallback cb;
             DataViewCallback vcb;
             {

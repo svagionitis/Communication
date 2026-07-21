@@ -5,6 +5,7 @@
 
 #pragma once
 
+#include "Types.h"
 #include <cstdint>
 #include <functional>
 #include <string_view>
@@ -123,6 +124,17 @@ public:
      * @return True if connected, false otherwise.
      */
     virtual bool isConnected() const = 0;
+
+    /**
+     * @brief Gets telemetry metrics and throughput statistics for the channel.
+     * @return ConnectionStats structure containing counters and rates.
+     */
+    virtual ConnectionStats stats() const { return {}; }
+
+    /**
+     * @brief Resets channel telemetry metric counters.
+     */
+    virtual void resetStats() { }
 };
 
 } // namespace Communication
