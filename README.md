@@ -11,6 +11,7 @@ Zero third-party network/serial dependencies (uses pure native OS Winsock2 & Win
 - **Unified Abstract Interface**: All communication channels inherit from `ICommunication`, enforcing a consistent API contract (`open()`, `connect()`, `close()`, `disconnect()`, `send()`, `registerReceiveCallback()`, `isOpen()`, `isConnected()`).
 - **Zero Third-Party Socket/Serial Dependencies**: Pure native OS implementations without Asio, Boost, or libserialport.
 - **Strict RAII Resource Management**: Complete exception safety, automatic thread joining, and resource cleanup on object destruction.
+- **TCP Client & Server Keep-Alive**: Native cross-platform TCP Keep-Alive options (`SO_KEEPALIVE`, `TCP_KEEPIDLE`, `TCP_KEEPINTVL`, `TCP_KEEPCNT`, `WSAIoctl`) to detect dead sockets and broken connections across firewalls.
 - **Thread-Safe & Async**: Non-blocking background worker threads handle incoming byte streams without locking main application or GUI threads.
 - **Full Serial Baud Rate Support**: Full support for standard and custom baud rates ranging from `110` up to `4,000,000` baud, with configurable parity, stop bits, and data bits.
 - **CLI Client**: Built-in interactive command-line tool (`communication_cli`) built by default.

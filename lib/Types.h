@@ -60,12 +60,23 @@ enum class StopBits { One, OnePointFive, Two };
 enum class DataBits { Five = 5, Six = 6, Seven = 7, Eight = 8 };
 
 /**
+ * @brief Configuration parameters for native TCP keep-alive socket options.
+ */
+struct TcpKeepAliveConfig {
+    bool enable {true};
+    uint32_t keepIdleSec {60};
+    uint32_t keepIntervalSec {5};
+    uint32_t keepCount {3};
+};
+
+/**
  * @brief Configuration parameters for TCP client/server connections.
  */
 struct TcpConfig {
     std::string host {"127.0.0.1"};
     uint16_t port {8080};
     uint32_t timeoutMs {3000};
+    TcpKeepAliveConfig keepAlive;
 };
 
 /**

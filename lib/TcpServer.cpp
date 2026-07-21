@@ -203,6 +203,13 @@ void TcpServer::acceptLoop()
             continue;
         }
 
+        TcpConfig cfg;
+        {
+            std::lock_guard<std::mutex> lockConfig(m_configMutex);
+            cfg = m_config;
+        }
+        Platform::configureSocketKeepAlive(clientSock, cfg.keepAlive);
+
         {
             std::lock_guard<std::mutex> lock(m_serverMutex);
             m_clientSockets.push_back(clientSock);

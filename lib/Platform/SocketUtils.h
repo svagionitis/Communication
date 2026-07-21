@@ -5,12 +5,14 @@
 
 #pragma once
 
+#include "Types.h"
 #include <string>
 
 #ifdef _WIN32
 #ifndef WIN32_LEAN_AND_MEAN
 #define WIN32_LEAN_AND_MEAN
 #endif
+#include <mstcpip.h>
 #include <winsock2.h>
 #include <ws2tcpip.h>
 #else
@@ -18,6 +20,7 @@
 #include <fcntl.h>
 #include <netdb.h>
 #include <netinet/in.h>
+#include <netinet/tcp.h>
 #include <sys/socket.h>
 #include <sys/types.h>
 #include <unistd.h>
@@ -62,6 +65,14 @@ void closeSocketHandle(SocketHandle handle);
  * @return True on success.
  */
 bool setSocketNonBlocking(SocketHandle handle, bool nonBlocking);
+
+/**
+ * @brief Configures native TCP Keep-Alive options on a socket handle.
+ * @param handle Active TCP socket handle.
+ * @param config TcpKeepAliveConfig parameters.
+ * @return True if configuration succeeded, false otherwise.
+ */
+bool configureSocketKeepAlive(SocketHandle handle, const TcpKeepAliveConfig& config);
 
 /**
  * @brief Retrieves formatted string of last socket error.

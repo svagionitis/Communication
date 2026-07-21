@@ -69,6 +69,57 @@ bool setSocketNonBlocking(SocketHandle handle, bool nonBlocking)
 #endif
 }
 
+bool configureSocketKeepAlive(SocketHandle handle, const TcpKeepAliveConfig& config)
+{
+    if (handle == INVALID_SOCKET_HANDLE) {
+        return false;
+    }
+
+    int optEnable = config.enable ? 1 : 0;
+    if (setsockopt(handle, SOL_SOCKET, SO_KEEPALIVE, reinterpret_cast<const char*>(&optEnable), sizeof(optEnable)) <
+        0) {
+        LOG(ERROR) << "Failed to set SO_KEEPALIVE option: " << getSocketErrorString();
+        return false;
+    }
+
+    if (!config.enable) {
+        return true;
+    }
+
+#ifdef _WIN32
+    struct tcp_keepalive keepaliveSettings { };
+    keepaliveSettings.onoff = 1;
+    keepaliveSettings.keepalivetime = config.keepIdleSec * 1000;
+    keepaliveSettings.keepaliveinterval = config.keepIntervalSec * 1000;
+
+    DWORD bytesReturned = 0;
+    if (WSAIoctl(handle, SIO_KEEPALIVE_VALS, &keepaliveSettings, sizeof(keepaliveSettings), nullptr, 0, &bytesReturned,
+                 nullptr, nullptr) != 0) {
+        LOG(WARNING) << "WSAIoctl SIO_KEEPALIVE_VALS warning: " << getSocketErrorString();
+    }
+#else
+#ifdef TCP_KEEPIDLE
+    int idleSec = static_cast<int>(config.keepIdleSec);
+    setsockopt(handle, IPPROTO_TCP, TCP_KEEPIDLE, &idleSec, sizeof(idleSec));
+#elif defined(TCP_KEEPALIVE)
+    int idleSec = static_cast<int>(config.keepIdleSec);
+    setsockopt(handle, IPPROTO_TCP, TCP_KEEPALIVE, &idleSec, sizeof(idleSec));
+#endif
+
+#ifdef TCP_KEEPINTVL
+    int intvlSec = static_cast<int>(config.keepIntervalSec);
+    setsockopt(handle, IPPROTO_TCP, TCP_KEEPINTVL, &intvlSec, sizeof(intvlSec));
+#endif
+
+#ifdef TCP_KEEPCNT
+    int cnt = static_cast<int>(config.keepCount);
+    setsockopt(handle, IPPROTO_TCP, TCP_KEEPCNT, &cnt, sizeof(cnt));
+#endif
+#endif
+
+    return true;
+}
+
 std::string getSocketErrorString()
 {
 #ifdef _WIN32

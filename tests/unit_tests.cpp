@@ -147,6 +147,30 @@ TEST(TcpCommunicationTest, ServerClientLoopback)
     server.close();
 }
 
+TEST(TcpCommunicationTest, SocketKeepAliveConfiguration)
+{
+    TcpKeepAliveConfig keepAlive;
+    keepAlive.enable = true;
+    keepAlive.keepIdleSec = 30;
+    keepAlive.keepIntervalSec = 2;
+    keepAlive.keepCount = 4;
+
+    TcpConfig cfg;
+    cfg.port = 9877;
+    cfg.keepAlive = keepAlive;
+
+    TcpServer server(cfg);
+    ASSERT_TRUE(server.open());
+
+    TcpClient client(cfg);
+    ASSERT_TRUE(client.open());
+
+    std::this_thread::sleep_for(std::chrono::milliseconds(50));
+
+    client.close();
+    server.close();
+}
+
 // ============================================================================
 // 3. UDP Socket Loopback Test
 // ============================================================================

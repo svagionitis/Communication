@@ -110,6 +110,8 @@ bool TcpClient::open()
         return false;
     }
 
+    Platform::configureSocketKeepAlive(sock, cfg.keepAlive);
+
     Platform::setSocketNonBlocking(sock, true);
 
     int connectRes = ::connect(sock, res->ai_addr, static_cast<socklen_t>(res->ai_addrlen));
