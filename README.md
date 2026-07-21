@@ -31,6 +31,8 @@ Zero third-party network/serial dependencies (uses pure native OS Winsock2 & Win
 ├── CMakeLists.txt              # Root CMake configuration
 ├── LICENSE                     # Dual GPLv3 & Commercial License notice
 ├── LLM.md                      # Architecture and design specifications
+├── docs/
+│   └── c4_architecture.md      # Detailed C4 Model Architecture (ASCII & Mermaid diagrams)
 ├── .editorconfig               # EditorConfig rules (WebKit style)
 ├── .gitignore                  # Git ignore rules for CMake, Qt, & IDEs
 ├── .clang-format               # WebKit C++ style formatting config
