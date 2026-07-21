@@ -10,6 +10,7 @@ Zero third-party network/serial dependencies (uses pure native OS Winsock2 & Win
 
 - **Unified Abstract Interface**: All communication channels inherit from `ICommunication`, enforcing a consistent API contract (`open()`, `connect()`, `close()`, `disconnect()`, `send()`, `registerReceiveCallback()`, `isOpen()`, `isConnected()`).
 - **Zero Third-Party Socket/Serial Dependencies**: Pure native OS implementations without Asio, Boost, or libserialport.
+- **Lock-Free SPSC Ring Buffer (`LockFreeRingBuffer<T, Capacity>`)**: High-performance, header-only Single-Producer Single-Consumer lock-free ring buffer with 64-byte cache-line alignment to eliminate lock contention, mutex overhead, and false sharing in real-time processing threads.
 - **Zero-Copy High-Rate Callbacks**: Non-allocating callback overloads (`DataViewCallback` / `StringViewCallback`) passing `const uint8_t*` and `size_t` / `std::string_view` to eliminate dynamic `std::vector` heap allocations in high-throughput receive loops.
 - **Auto-Reconnect Manager (`ReconnectPolicy`)**: Automatic non-blocking connection recovery with configurable exponential backoff (`initialDelayMs`, `maxDelayMs`, `backoffMultiplier`, `maxRetries`) for `TcpClient` and `SerialPort`.
 - **Strict RAII Resource Management**: Complete exception safety, automatic thread joining, and resource cleanup on object destruction.

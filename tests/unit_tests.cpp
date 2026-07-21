@@ -5,6 +5,7 @@
  */
 
 #include "ICommunication.h"
+#include "LockFreeRingBuffer.h"
 #include "SerialPort.h"
 #include "TcpClient.h"
 #include "TcpServer.h"
@@ -86,7 +87,88 @@ TEST(ThreadSafeQueueTest, ConcurrentStressTest)
 }
 
 // ============================================================================
-// 2. TCP Client & Server Integration Tests
+// 2. LockFreeRingBuffer Unit Tests
+// ============================================================================
+
+TEST(LockFreeRingBufferTest, BasicPushPop)
+{
+    LockFreeRingBuffer<int, 16> ringBuffer;
+    EXPECT_TRUE(ringBuffer.empty());
+    EXPECT_EQ(ringBuffer.capacity(), 16u);
+
+    EXPECT_TRUE(ringBuffer.push(101));
+    EXPECT_TRUE(ringBuffer.push(102));
+    EXPECT_EQ(ringBuffer.size(), 2u);
+
+    int item = 0;
+    EXPECT_TRUE(ringBuffer.pop(item));
+    EXPECT_EQ(item, 101);
+
+    EXPECT_TRUE(ringBuffer.pop(item));
+    EXPECT_EQ(item, 102);
+
+    EXPECT_FALSE(ringBuffer.pop(item));
+    EXPECT_TRUE(ringBuffer.empty());
+}
+
+TEST(LockFreeRingBufferTest, FullEmptyBoundary)
+{
+    LockFreeRingBuffer<int, 4> ringBuffer;
+
+    EXPECT_TRUE(ringBuffer.push(1));
+    EXPECT_TRUE(ringBuffer.push(2));
+    EXPECT_TRUE(ringBuffer.push(3));
+    EXPECT_TRUE(ringBuffer.push(4));
+
+    EXPECT_TRUE(ringBuffer.full());
+    EXPECT_FALSE(ringBuffer.push(5)); // Overflow rejected
+
+    int val = 0;
+    EXPECT_TRUE(ringBuffer.pop(val));
+    EXPECT_EQ(val, 1);
+
+    EXPECT_FALSE(ringBuffer.full());
+    EXPECT_TRUE(ringBuffer.push(5)); // Can push now
+}
+
+TEST(LockFreeRingBufferTest, ConcurrentSpscStressTest)
+{
+    LockFreeRingBuffer<int, 1024> ringBuffer;
+    constexpr int totalElements = 100000;
+
+    std::thread producer([&ringBuffer]() {
+        for (int i = 0; i < totalElements; ++i) {
+            while (!ringBuffer.push(i)) {
+                std::this_thread::yield();
+            }
+        }
+    });
+
+    std::vector<int> poppedItems;
+    poppedItems.reserve(totalElements);
+
+    std::thread consumer([&ringBuffer, &poppedItems]() {
+        int item = 0;
+        while (poppedItems.size() < totalElements) {
+            if (ringBuffer.pop(item)) {
+                poppedItems.push_back(item);
+            } else {
+                std::this_thread::yield();
+            }
+        }
+    });
+
+    producer.join();
+    consumer.join();
+
+    ASSERT_EQ(poppedItems.size(), static_cast<std::size_t>(totalElements));
+    for (int i = 0; i < totalElements; ++i) {
+        EXPECT_EQ(poppedItems[static_cast<std::size_t>(i)], i);
+    }
+}
+
+// ============================================================================
+// 3. TCP Client & Server Integration Tests
 // ============================================================================
 
 TEST(TcpCommunicationTest, ServerClientLoopback)

@@ -10,6 +10,7 @@ set(LIBRARY_HEADERS
     ICommunication.h
     Types.h
     ThreadSafeQueue.h
+    LockFreeRingBuffer.h
     TcpClient.h
     TcpServer.h
     UdpSocket.h
