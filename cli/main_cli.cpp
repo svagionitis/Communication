@@ -36,6 +36,9 @@ int main(int argc, char* argv[])
     std::string device = "/dev/ttyUSB0";
     uint32_t baud = 115200;
     std::string flowControl = "none";
+    bool autoReconnect = false;
+    uint32_t reconnectDelay = 1000;
+    uint32_t reconnectMaxDelay = 30000;
     bool interactive = false;
 
     for (int i = 1; i < argc; ++i) {
@@ -52,6 +55,12 @@ int main(int argc, char* argv[])
             baud = static_cast<uint32_t>(std::stoul(arg.substr(7)));
         } else if (arg.rfind("--flowcontrol=", 0) == 0) {
             flowControl = arg.substr(14);
+        } else if (arg == "--auto-reconnect") {
+            autoReconnect = true;
+        } else if (arg.rfind("--reconnect-delay=", 0) == 0) {
+            reconnectDelay = static_cast<uint32_t>(std::stoul(arg.substr(18)));
+        } else if (arg.rfind("--reconnect-max-delay=", 0) == 0) {
+            reconnectMaxDelay = static_cast<uint32_t>(std::stoul(arg.substr(22)));
         } else if (arg == "--interactive") {
             interactive = true;
         } else if (arg == "--help") {
@@ -66,8 +75,12 @@ int main(int argc, char* argv[])
         Communication::TcpConfig config;
         config.host = host;
         config.port = port;
+        config.autoReconnect.enable = autoReconnect;
+        config.autoReconnect.initialDelayMs = reconnectDelay;
+        config.autoReconnect.maxDelayMs = reconnectMaxDelay;
         channel = std::make_unique<Communication::TcpClient>(config);
-        std::cout << "[CLI] Initialized TCP client targeting " << host << ":" << port << "\n";
+        std::cout << "[CLI] Initialized TCP client targeting " << host << ":" << port
+                  << " (auto-reconnect: " << (autoReconnect ? "enabled" : "disabled") << ")\n";
     } else if (mode == "udp") {
         Communication::UdpConfig config;
         config.remoteHost = host;
@@ -85,9 +98,12 @@ int main(int argc, char* argv[])
         } else {
             config.flowControl = Communication::FlowControl::None;
         }
+        config.autoReconnect.enable = autoReconnect;
+        config.autoReconnect.initialDelayMs = reconnectDelay;
+        config.autoReconnect.maxDelayMs = reconnectMaxDelay;
         channel = std::make_unique<Communication::SerialPort>(config);
         std::cout << "[CLI] Initialized Serial port on " << device << " @ " << baud << " baud (flow: " << flowControl
-                  << ")\n";
+                  << ", auto-reconnect: " << (autoReconnect ? "enabled" : "disabled") << ")\n";
     } else {
         std::cerr << "Unknown mode: " << mode << "\n";
         printUsage(argv[0]);

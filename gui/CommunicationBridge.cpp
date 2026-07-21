@@ -107,6 +107,19 @@ void CommunicationBridge::setFlowControl(const QString& flow)
     }
 }
 
+bool CommunicationBridge::autoReconnect() const
+{
+    return m_autoReconnect;
+}
+
+void CommunicationBridge::setAutoReconnect(bool enable)
+{
+    if (m_autoReconnect != enable) {
+        m_autoReconnect = enable;
+        emit autoReconnectChanged();
+    }
+}
+
 QString CommunicationBridge::logOutput() const
 {
     return m_logOutput;
@@ -123,6 +136,7 @@ bool CommunicationBridge::connectChannel()
         TcpConfig config;
         config.host = m_host.toStdString();
         config.port = static_cast<uint16_t>(m_port);
+        config.autoReconnect.enable = m_autoReconnect;
         m_channel = std::make_unique<TcpClient>(config);
     } else if (m_mode.toUpper() == "UDP") {
         UdpConfig config;
@@ -140,6 +154,7 @@ bool CommunicationBridge::connectChannel()
         } else {
             config.flowControl = FlowControl::None;
         }
+        config.autoReconnect.enable = m_autoReconnect;
         m_channel = std::make_unique<SerialPort>(config);
     } else {
         appendLog("[Bridge] Unknown mode requested: " + m_mode);
@@ -147,6 +162,17 @@ bool CommunicationBridge::connectChannel()
     }
 
     m_channel->registerReceiveCallback([this](const std::vector<uint8_t>& data) { handleDataReceived(data); });
+
+    m_channel->registerConnectionStateCallback([this](bool connected) {
+        QMetaObject::invokeMethod(
+            this,
+            [this, connected]() {
+                emit connectionStatusChanged();
+                appendLog(connected ? "[Bridge] Connection established."
+                                    : "[Bridge] Connection lost / reconnecting...");
+            },
+            Qt::QueuedConnection);
+    });
 
     bool success = m_channel->open();
     if (success) {

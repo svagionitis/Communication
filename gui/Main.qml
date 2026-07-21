@@ -2,7 +2,7 @@ import QtQuick import QtQuick.Controls import QtQuick.Layouts import Communicati
 
     Window{id:root width: 900 height: 650 visible: true title: "Communication Library - Qt6 QML GUI Client" color: "#1e1e2e"
 
-           CommunicationBridge{id:bridge mode:modeCombo.currentText host:hostField.text port:parseInt(portField.text) serialDevice:deviceField.text baudRate:parseInt(baudField.text) flowControl:flowCombo.currentText }
+           CommunicationBridge{id:bridge mode:modeCombo.currentText host:hostField.text port:parseInt(portField.text) serialDevice:deviceField.text baudRate:parseInt(baudField.text) flowControl:flowCombo.currentText autoReconnect:autoReconnectCheck.checked }
 
                                                                                                       ColumnLayout{anchors.fill:parent anchors.margins: 16 spacing: 16
 
@@ -96,6 +96,8 @@ RowLayout
     }
 
     Button {text: "Clear Output Logs" onClicked: bridge.clearLogs()}
+
+    CheckBox {id: autoReconnectCheck text: "Auto Reconnect" checked: false enabled: !bridge.isConnected}
 
     Item
     {

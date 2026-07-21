@@ -79,6 +79,17 @@ struct TcpKeepAliveConfig {
 };
 
 /**
+ * @brief Configuration parameters for automatic connection recovery and exponential backoff.
+ */
+struct ReconnectPolicy {
+    bool enable {false};
+    uint32_t initialDelayMs {1000};
+    uint32_t maxDelayMs {30000};
+    double backoffMultiplier {2.0};
+    uint32_t maxRetries {0}; // 0 = unlimited retries
+};
+
+/**
  * @brief Configuration parameters for TCP client/server connections.
  */
 struct TcpConfig {
@@ -86,6 +97,7 @@ struct TcpConfig {
     uint16_t port {8080};
     uint32_t timeoutMs {3000};
     TcpKeepAliveConfig keepAlive;
+    ReconnectPolicy autoReconnect;
 };
 
 /**
@@ -109,6 +121,7 @@ struct SerialConfig {
     StopBits stopBits {StopBits::One};
     FlowControl flowControl {FlowControl::None};
     uint32_t timeoutMs {1000};
+    ReconnectPolicy autoReconnect;
 };
 
 /**

@@ -171,6 +171,39 @@ TEST(TcpCommunicationTest, SocketKeepAliveConfiguration)
     server.close();
 }
 
+TEST(TcpCommunicationTest, AutoReconnectOnServerRestart)
+{
+    std::atomic<bool> stateConnected {false};
+
+    TcpConfig cfg;
+    cfg.port = 9899;
+    cfg.autoReconnect.enable = true;
+    cfg.autoReconnect.initialDelayMs = 50;
+    cfg.autoReconnect.maxDelayMs = 200;
+
+    auto server = std::make_unique<TcpServer>(cfg);
+    ASSERT_TRUE(server->open());
+
+    TcpClient client(cfg);
+    client.registerConnectionStateCallback([&stateConnected](bool connected) { stateConnected.store(connected); });
+
+    ASSERT_TRUE(client.open());
+    std::this_thread::sleep_for(std::chrono::milliseconds(50));
+    EXPECT_TRUE(stateConnected.load());
+
+    server->close();
+    std::this_thread::sleep_for(std::chrono::milliseconds(100));
+
+    server = std::make_unique<TcpServer>(cfg);
+    ASSERT_TRUE(server->open());
+
+    std::this_thread::sleep_for(std::chrono::milliseconds(300));
+    EXPECT_TRUE(stateConnected.load());
+
+    client.close();
+    server->close();
+}
+
 // ============================================================================
 // 3. UDP Socket Loopback Test
 // ============================================================================

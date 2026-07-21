@@ -8,6 +8,7 @@
 #include "ICommunication.h"
 #include "Types.h"
 #include <atomic>
+#include <condition_variable>
 #include <mutex>
 #include <thread>
 
@@ -47,19 +48,47 @@ public:
     bool send(const std::vector<uint8_t>& data) override;
     bool send(std::string_view data) override;
 
+    /**
+     * @brief Registers receive callback function.
+     * @param callback Function called upon receiving data payload.
+     */
     void registerReceiveCallback(DataReceivedCallback callback) override;
 
+    /**
+     * @brief Registers connection state transition callback.
+     * @param callback Function called when Serial port opens or closes.
+     */
+    void registerConnectionStateCallback(ConnectionStateCallback callback) override;
+
+    /**
+     * @brief Checks if serial port is open.
+     * @return True if open.
+     */
     bool isOpen() const override;
+
+    /**
+     * @brief Alias for isOpen().
+     */
     bool isConnected() const override;
 
+    /**
+     * @brief Updates Serial port configuration.
+     * @param config New SerialConfig settings.
+     */
     void setConfig(const SerialConfig& config);
+
+    /**
+     * @brief Gets current Serial port configuration.
+     * @return Current SerialConfig.
+     */
     SerialConfig config() const;
 
 private:
     void receiveLoop();
     void stopReceiveThread();
-
     bool configurePlatformPort();
+    void notifyConnectionState(bool connected);
+    bool openInternal();
 
     mutable std::mutex m_configMutex;
     SerialConfig m_config;
@@ -70,6 +99,12 @@ private:
 
     mutable std::mutex m_callbackMutex;
     DataReceivedCallback m_callback;
+
+    mutable std::mutex m_stateCallbackMutex;
+    ConnectionStateCallback m_stateCallback;
+
+    std::condition_variable m_reconnectCv;
+    std::mutex m_reconnectMutex;
 
     std::thread m_receiveThread;
     std::atomic<bool> m_isRunning {false};

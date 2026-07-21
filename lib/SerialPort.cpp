@@ -5,6 +5,8 @@
 
 #include "SerialPort.h"
 #include <array>
+#include <cmath>
+#include <cstring>
 #include <glog/logging.h>
 
 #ifndef _WIN32
@@ -81,7 +83,25 @@ SerialPort& SerialPort::operator=(SerialPort&& other) noexcept
     return *this;
 }
 
-bool SerialPort::open()
+void SerialPort::registerConnectionStateCallback(ConnectionStateCallback callback)
+{
+    std::lock_guard<std::mutex> lock(m_stateCallbackMutex);
+    m_stateCallback = std::move(callback);
+}
+
+void SerialPort::notifyConnectionState(bool connected)
+{
+    ConnectionStateCallback cb;
+    {
+        std::lock_guard<std::mutex> lock(m_stateCallbackMutex);
+        cb = m_stateCallback;
+    }
+    if (cb) {
+        cb(connected);
+    }
+}
+
+bool SerialPort::openInternal()
 {
     std::lock_guard<std::mutex> lockPort(m_portMutex);
     if (m_isOpen.load()) {
@@ -96,7 +116,7 @@ bool SerialPort::open()
 
 #ifdef _WIN32
     std::string portPath = cfg.portName;
-    if (portPath.rfind("COM", 0) == 0 && portPath.length() > 4) {
+    if (portPath.rfind("\\\\.\\", 0) != 0 && portPath.rfind("COM", 0) == 0) {
         portPath = "\\\\.\\" + portPath;
     }
 
@@ -122,15 +142,34 @@ bool SerialPort::open()
 #endif
 
     if (!configurePlatformPort()) {
-        close();
+#ifdef _WIN32
+        CloseHandle(m_handle);
+#else
+        ::close(m_handle);
+#endif
+        m_handle = INVALID_SERIAL_HANDLE;
         return false;
     }
 
     m_isOpen.store(true);
-    m_isRunning.store(true);
-
-    m_receiveThread = std::thread(&SerialPort::receiveLoop, this);
     LOG(INFO) << "SerialPort " << cfg.portName << " opened successfully.";
+    return true;
+}
+
+bool SerialPort::open()
+{
+    if (m_isOpen.load()) {
+        LOG(INFO) << "SerialPort already open.";
+        return true;
+    }
+
+    if (!openInternal()) {
+        return false;
+    }
+
+    m_isRunning.store(true);
+    m_receiveThread = std::thread(&SerialPort::receiveLoop, this);
+    notifyConnectionState(true);
     return true;
 }
 
@@ -152,7 +191,10 @@ void SerialPort::close()
 #endif
         m_handle = INVALID_SERIAL_HANDLE;
     }
-    m_isOpen.store(false);
+    bool wasOpen = m_isOpen.exchange(false);
+    if (wasOpen) {
+        notifyConnectionState(false);
+    }
     LOG(INFO) << "SerialPort closed.";
 }
 
@@ -218,6 +260,7 @@ SerialConfig SerialPort::config() const
 void SerialPort::stopReceiveThread()
 {
     if (m_isRunning.exchange(false)) {
+        m_reconnectCv.notify_all();
         if (m_receiveThread.joinable()) {
             m_receiveThread.join();
         }
@@ -532,18 +575,27 @@ void SerialPort::receiveLoop()
             break;
         }
 
+        bool ioError = false;
+
 #ifdef _WIN32
         DWORD bytesRead = 0;
         BOOL success = ReadFile(h, buffer.data(), static_cast<DWORD>(buffer.size()), &bytesRead, nullptr);
-        if (success && bytesRead > 0) {
-            std::vector<uint8_t> data(buffer.begin(), buffer.begin() + bytesRead);
-            DataReceivedCallback cb;
-            {
-                std::lock_guard<std::mutex> lock(m_callbackMutex);
-                cb = m_callback;
+        if (success) {
+            if (bytesRead > 0) {
+                std::vector<uint8_t> data(buffer.begin(), buffer.begin() + bytesRead);
+                DataReceivedCallback cb;
+                {
+                    std::lock_guard<std::mutex> lock(m_callbackMutex);
+                    cb = m_callback;
+                }
+                if (cb) {
+                    cb(data);
+                }
             }
-            if (cb) {
-                cb(data);
+        } else {
+            if (m_isRunning.load()) {
+                LOG(ERROR) << "SerialPort ReadFile error: " << GetLastError();
+                ioError = true;
             }
         }
 #else
@@ -558,8 +610,63 @@ void SerialPort::receiveLoop()
             if (cb) {
                 cb(data);
             }
+        } else if (bytesRead < 0 && (errno != EAGAIN && errno != EWOULDBLOCK)) {
+            if (m_isRunning.load()) {
+                LOG(ERROR) << "SerialPort read error: " << strerror(errno);
+                ioError = true;
+            }
         }
 #endif
+
+        if (ioError) {
+            m_isOpen.store(false);
+            notifyConnectionState(false);
+
+            SerialConfig cfg;
+            {
+                std::lock_guard<std::mutex> lockConfig(m_configMutex);
+                cfg = m_config;
+            }
+
+            if (!cfg.autoReconnect.enable || !m_isRunning.load()) {
+                break;
+            }
+
+            uint32_t attempt = 0;
+            bool reconnected = false;
+
+            while (m_isRunning.load()) {
+                attempt++;
+                if (cfg.autoReconnect.maxRetries > 0 && attempt > cfg.autoReconnect.maxRetries) {
+                    LOG(WARNING) << "SerialPort max reconnect retries reached (" << cfg.autoReconnect.maxRetries
+                                 << ").";
+                    break;
+                }
+
+                double delay = cfg.autoReconnect.initialDelayMs *
+                               std::pow(cfg.autoReconnect.backoffMultiplier, static_cast<double>(attempt - 1));
+                uint32_t delayMs =
+                    static_cast<uint32_t>(std::min(static_cast<double>(cfg.autoReconnect.maxDelayMs), delay));
+                LOG(INFO) << "SerialPort reconnect attempt " << attempt << " in " << delayMs << " ms...";
+
+                std::unique_lock<std::mutex> lockRec(m_reconnectMutex);
+                if (m_reconnectCv.wait_for(lockRec, std::chrono::milliseconds(delayMs),
+                                           [this] { return !m_isRunning.load(); })) {
+                    break;
+                }
+
+                if (openInternal()) {
+                    LOG(INFO) << "SerialPort successfully reconnected on attempt " << attempt;
+                    notifyConnectionState(true);
+                    reconnected = true;
+                    break;
+                }
+            }
+
+            if (!reconnected) {
+                break;
+            }
+        }
     }
 }
 

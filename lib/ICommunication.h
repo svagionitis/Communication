@@ -18,6 +18,11 @@ namespace Communication {
 using DataReceivedCallback = std::function<void(const std::vector<uint8_t>& data)>;
 
 /**
+ * @brief Connection state callback function signature.
+ */
+using ConnectionStateCallback = std::function<void(bool connected)>;
+
+/**
  * @brief Interface defining the unified API contract for all communication channels (TCP, UDP, Serial).
  *
  * Enforces pure virtual operations for opening/connecting, closing/disconnecting,
@@ -71,6 +76,12 @@ public:
      * @param callback Function to invoke when new data arrives.
      */
     virtual void registerReceiveCallback(DataReceivedCallback callback) = 0;
+
+    /**
+     * @brief Registers a connection state transition callback.
+     * @param callback Function to invoke when connection state changes.
+     */
+    virtual void registerConnectionStateCallback(ConnectionStateCallback callback) { (void)callback; }
 
     /**
      * @brief Checks whether the channel is currently open and operational.

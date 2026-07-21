@@ -9,6 +9,7 @@
 #include "Platform/SocketUtils.h"
 #include "Types.h"
 #include <atomic>
+#include <condition_variable>
 #include <mutex>
 #include <thread>
 
@@ -78,6 +79,12 @@ public:
     void registerReceiveCallback(DataReceivedCallback callback) override;
 
     /**
+     * @brief Registers connection state transition callback.
+     * @param callback Function called when TCP client connects or disconnects.
+     */
+    void registerConnectionStateCallback(ConnectionStateCallback callback) override;
+
+    /**
      * @brief Checks if socket is open and connected.
      * @return True if connected.
      */
@@ -103,6 +110,8 @@ public:
 private:
     void receiveLoop();
     void stopReceiveThread();
+    void notifyConnectionState(bool connected);
+    bool openInternal();
 
     mutable std::mutex m_configMutex;
     TcpConfig m_config;
@@ -113,6 +122,12 @@ private:
 
     mutable std::mutex m_callbackMutex;
     DataReceivedCallback m_callback;
+
+    mutable std::mutex m_stateCallbackMutex;
+    ConnectionStateCallback m_stateCallback;
+
+    std::condition_variable m_reconnectCv;
+    std::mutex m_reconnectMutex;
 
     std::thread m_receiveThread;
     std::atomic<bool> m_isRunning {false};

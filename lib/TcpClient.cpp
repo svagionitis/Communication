@@ -5,6 +5,7 @@
 
 #include "TcpClient.h"
 #include <array>
+#include <cmath>
 #include <cstring>
 #include <glog/logging.h>
 
@@ -76,12 +77,30 @@ TcpClient& TcpClient::operator=(TcpClient&& other) noexcept
     return *this;
 }
 
-bool TcpClient::open()
+void TcpClient::registerConnectionStateCallback(ConnectionStateCallback callback)
+{
+    std::lock_guard<std::mutex> lock(m_stateCallbackMutex);
+    m_stateCallback = std::move(callback);
+}
+
+void TcpClient::notifyConnectionState(bool connected)
+{
+    ConnectionStateCallback cb;
+    {
+        std::lock_guard<std::mutex> lock(m_stateCallbackMutex);
+        cb = m_stateCallback;
+    }
+    if (cb) {
+        cb(connected);
+    }
+}
+
+bool TcpClient::openInternal()
 {
     std::lock_guard<std::mutex> lockSocket(m_socketMutex);
-    if (m_isConnected.load()) {
-        LOG(INFO) << "TcpClient already connected.";
-        return true;
+    if (m_socket != INVALID_SOCKET_HANDLE) {
+        Platform::closeSocketHandle(m_socket);
+        m_socket = INVALID_SOCKET_HANDLE;
     }
 
     TcpConfig cfg;
@@ -111,7 +130,6 @@ bool TcpClient::open()
     }
 
     Platform::configureSocketKeepAlive(sock, cfg.keepAlive);
-
     Platform::setSocketNonBlocking(sock, true);
 
     int connectRes = ::connect(sock, res->ai_addr, static_cast<socklen_t>(res->ai_addrlen));
@@ -162,10 +180,24 @@ bool TcpClient::open()
 
     m_socket = sock;
     m_isConnected.store(true);
-    m_isRunning.store(true);
-
-    m_receiveThread = std::thread(&TcpClient::receiveLoop, this);
     LOG(INFO) << "TcpClient successfully connected to " << cfg.host << ":" << cfg.port;
+    return true;
+}
+
+bool TcpClient::open()
+{
+    if (m_isConnected.load()) {
+        LOG(INFO) << "TcpClient already connected.";
+        return true;
+    }
+
+    if (!openInternal()) {
+        return false;
+    }
+
+    m_isRunning.store(true);
+    m_receiveThread = std::thread(&TcpClient::receiveLoop, this);
+    notifyConnectionState(true);
     return true;
 }
 
@@ -183,7 +215,10 @@ void TcpClient::close()
         Platform::closeSocketHandle(m_socket);
         m_socket = INVALID_SOCKET_HANDLE;
     }
-    m_isConnected.store(false);
+    bool wasConnected = m_isConnected.exchange(false);
+    if (wasConnected) {
+        notifyConnectionState(false);
+    }
     LOG(INFO) << "TcpClient disconnected and closed.";
 }
 
@@ -255,6 +290,7 @@ TcpConfig TcpClient::config() const
 void TcpClient::stopReceiveThread()
 {
     if (m_isRunning.exchange(false)) {
+        m_reconnectCv.notify_all();
         if (m_socket != INVALID_SOCKET_HANDLE) {
 #ifdef _WIN32
             shutdown(m_socket, SD_BOTH);
@@ -295,17 +331,62 @@ void TcpClient::receiveLoop()
             if (cb) {
                 cb(data);
             }
-        } else if (bytesRead == 0) {
-            LOG(INFO) << "TcpClient connection closed by remote server.";
-            m_isConnected.store(false);
-            break;
         } else {
-            if (!m_isRunning.load()) {
+            if (bytesRead == 0) {
+                LOG(INFO) << "TcpClient connection closed by remote server.";
+            } else {
+                if (!m_isRunning.load()) {
+                    break;
+                }
+                LOG(ERROR) << "TcpClient recv error: " << Platform::getSocketErrorString();
+            }
+
+            m_isConnected.store(false);
+            notifyConnectionState(false);
+
+            TcpConfig cfg;
+            {
+                std::lock_guard<std::mutex> lockConfig(m_configMutex);
+                cfg = m_config;
+            }
+
+            if (!cfg.autoReconnect.enable || !m_isRunning.load()) {
                 break;
             }
-            LOG(ERROR) << "TcpClient recv error: " << Platform::getSocketErrorString();
-            m_isConnected.store(false);
-            break;
+
+            uint32_t attempt = 0;
+            bool reconnected = false;
+
+            while (m_isRunning.load()) {
+                attempt++;
+                if (cfg.autoReconnect.maxRetries > 0 && attempt > cfg.autoReconnect.maxRetries) {
+                    LOG(WARNING) << "TcpClient max reconnect retries reached (" << cfg.autoReconnect.maxRetries << ").";
+                    break;
+                }
+
+                double delay = cfg.autoReconnect.initialDelayMs *
+                               std::pow(cfg.autoReconnect.backoffMultiplier, static_cast<double>(attempt - 1));
+                uint32_t delayMs =
+                    static_cast<uint32_t>(std::min(static_cast<double>(cfg.autoReconnect.maxDelayMs), delay));
+                LOG(INFO) << "TcpClient reconnect attempt " << attempt << " in " << delayMs << " ms...";
+
+                std::unique_lock<std::mutex> lockRec(m_reconnectMutex);
+                if (m_reconnectCv.wait_for(lockRec, std::chrono::milliseconds(delayMs),
+                                           [this] { return !m_isRunning.load(); })) {
+                    break;
+                }
+
+                if (openInternal()) {
+                    LOG(INFO) << "TcpClient successfully reconnected on attempt " << attempt;
+                    notifyConnectionState(true);
+                    reconnected = true;
+                    break;
+                }
+            }
+
+            if (!reconnected) {
+                break;
+            }
         }
     }
 }
