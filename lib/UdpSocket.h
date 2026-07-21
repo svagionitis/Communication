@@ -47,6 +47,9 @@ public:
 
     void registerReceiveCallback(DataReceivedCallback callback) override;
 
+    using ICommunication::registerReceiveViewCallback;
+    void registerReceiveViewCallback(DataViewCallback callback) override;
+
     bool isOpen() const override;
     bool isConnected() const override;
 
@@ -66,6 +69,7 @@ private:
 
     mutable std::mutex m_callbackMutex;
     DataReceivedCallback m_callback;
+    DataViewCallback m_viewCallback;
 
     std::thread m_receiveThread;
     std::atomic<bool> m_isRunning {false};

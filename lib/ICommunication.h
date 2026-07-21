@@ -18,6 +18,16 @@ namespace Communication {
 using DataReceivedCallback = std::function<void(const std::vector<uint8_t>& data)>;
 
 /**
+ * @brief Zero-copy raw buffer receive callback function signature.
+ */
+using DataViewCallback = std::function<void(const uint8_t* data, size_t size)>;
+
+/**
+ * @brief Zero-copy string view receive callback function signature.
+ */
+using StringViewCallback = std::function<void(std::string_view data)>;
+
+/**
  * @brief Connection state callback function signature.
  */
 using ConnectionStateCallback = std::function<void(bool connected)>;
@@ -76,6 +86,25 @@ public:
      * @param callback Function to invoke when new data arrives.
      */
     virtual void registerReceiveCallback(DataReceivedCallback callback) = 0;
+
+    /**
+     * @brief Registers a zero-copy raw buffer receive callback.
+     * @param callback Function to invoke with data pointer and size.
+     */
+    virtual void registerReceiveViewCallback(DataViewCallback callback) { (void)callback; }
+
+    /**
+     * @brief Registers a zero-copy string view receive callback.
+     * @param callback Function to invoke with std::string_view.
+     */
+    virtual void registerReceiveViewCallback(StringViewCallback callback)
+    {
+        if (callback) {
+            registerReceiveViewCallback([callback](const uint8_t* data, size_t size) {
+                callback(std::string_view(reinterpret_cast<const char*>(data), size));
+            });
+        }
+    }
 
     /**
      * @brief Registers a connection state transition callback.

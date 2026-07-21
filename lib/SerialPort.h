@@ -54,6 +54,13 @@ public:
      */
     void registerReceiveCallback(DataReceivedCallback callback) override;
 
+    using ICommunication::registerReceiveViewCallback;
+    /**
+     * @brief Registers zero-copy raw buffer receive callback function.
+     * @param callback Function called upon receiving data payload with raw pointer and size.
+     */
+    void registerReceiveViewCallback(DataViewCallback callback) override;
+
     /**
      * @brief Registers connection state transition callback.
      * @param callback Function called when Serial port opens or closes.
@@ -99,6 +106,7 @@ private:
 
     mutable std::mutex m_callbackMutex;
     DataReceivedCallback m_callback;
+    DataViewCallback m_viewCallback;
 
     mutable std::mutex m_stateCallbackMutex;
     ConnectionStateCallback m_stateCallback;

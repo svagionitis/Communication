@@ -235,6 +235,12 @@ void SerialPort::registerReceiveCallback(DataReceivedCallback callback)
     m_callback = std::move(callback);
 }
 
+void SerialPort::registerReceiveViewCallback(DataViewCallback callback)
+{
+    std::lock_guard<std::mutex> lock(m_callbackMutex);
+    m_viewCallback = std::move(callback);
+}
+
 bool SerialPort::isOpen() const
 {
     return m_isOpen.load();
@@ -582,13 +588,18 @@ void SerialPort::receiveLoop()
         BOOL success = ReadFile(h, buffer.data(), static_cast<DWORD>(buffer.size()), &bytesRead, nullptr);
         if (success) {
             if (bytesRead > 0) {
-                std::vector<uint8_t> data(buffer.begin(), buffer.begin() + bytesRead);
                 DataReceivedCallback cb;
+                DataViewCallback vcb;
                 {
                     std::lock_guard<std::mutex> lock(m_callbackMutex);
                     cb = m_callback;
+                    vcb = m_viewCallback;
+                }
+                if (vcb) {
+                    vcb(buffer.data(), static_cast<size_t>(bytesRead));
                 }
                 if (cb) {
+                    std::vector<uint8_t> data(buffer.begin(), buffer.begin() + bytesRead);
                     cb(data);
                 }
             }
@@ -601,13 +612,18 @@ void SerialPort::receiveLoop()
 #else
         ssize_t bytesRead = ::read(h, buffer.data(), buffer.size());
         if (bytesRead > 0) {
-            std::vector<uint8_t> data(buffer.begin(), buffer.begin() + bytesRead);
             DataReceivedCallback cb;
+            DataViewCallback vcb;
             {
                 std::lock_guard<std::mutex> lock(m_callbackMutex);
                 cb = m_callback;
+                vcb = m_viewCallback;
+            }
+            if (vcb) {
+                vcb(buffer.data(), static_cast<size_t>(bytesRead));
             }
             if (cb) {
+                std::vector<uint8_t> data(buffer.begin(), buffer.begin() + bytesRead);
                 cb(data);
             }
         } else if (bytesRead < 0 && (errno != EAGAIN && errno != EWOULDBLOCK)) {

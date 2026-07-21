@@ -192,6 +192,12 @@ void UdpSocket::registerReceiveCallback(DataReceivedCallback callback)
     m_callback = std::move(callback);
 }
 
+void UdpSocket::registerReceiveViewCallback(DataViewCallback callback)
+{
+    std::lock_guard<std::mutex> lock(m_callbackMutex);
+    m_viewCallback = std::move(callback);
+}
+
 bool UdpSocket::isOpen() const
 {
     return m_isOpen.load();
@@ -252,13 +258,18 @@ void UdpSocket::receiveLoop()
                                    0, reinterpret_cast<struct sockaddr*>(&srcAddr), &srcLen);
 
         if (bytesRead > 0) {
-            std::vector<uint8_t> data(buffer.begin(), buffer.begin() + bytesRead);
             DataReceivedCallback cb;
+            DataViewCallback vcb;
             {
                 std::lock_guard<std::mutex> lock(m_callbackMutex);
                 cb = m_callback;
+                vcb = m_viewCallback;
+            }
+            if (vcb) {
+                vcb(buffer.data(), static_cast<size_t>(bytesRead));
             }
             if (cb) {
+                std::vector<uint8_t> data(buffer.begin(), buffer.begin() + bytesRead);
                 cb(data);
             }
         } else {

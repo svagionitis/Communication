@@ -204,6 +204,39 @@ TEST(TcpCommunicationTest, AutoReconnectOnServerRestart)
     server->close();
 }
 
+TEST(TcpCommunicationTest, ZeroCopyViewCallback)
+{
+    std::string rxData;
+    std::mutex rxMutex;
+
+    TcpConfig cfg;
+    cfg.port = 9890;
+
+    TcpServer server(cfg);
+    ASSERT_TRUE(server.open());
+
+    TcpClient client(cfg);
+    client.registerReceiveViewCallback([&rxData, &rxMutex](std::string_view data) {
+        std::lock_guard<std::mutex> lock(rxMutex);
+        rxData = std::string(data);
+    });
+
+    ASSERT_TRUE(client.open());
+
+    std::this_thread::sleep_for(std::chrono::milliseconds(50));
+    server.send("ZERO_COPY_PING");
+
+    std::this_thread::sleep_for(std::chrono::milliseconds(100));
+
+    {
+        std::lock_guard<std::mutex> lock(rxMutex);
+        EXPECT_EQ(rxData, "ZERO_COPY_PING");
+    }
+
+    client.close();
+    server.close();
+}
+
 // ============================================================================
 // 3. UDP Socket Loopback Test
 // ============================================================================

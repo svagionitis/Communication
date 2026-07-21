@@ -34,7 +34,18 @@ public:
     bool send(const std::vector<uint8_t>& data) override;
     bool send(std::string_view data) override;
 
+    /**
+     * @brief Registers receive callback function.
+     * @param callback Function called upon receiving data payload.
+     */
     void registerReceiveCallback(DataReceivedCallback callback) override;
+
+    /**
+     * @brief Registers zero-copy raw buffer receive callback function.
+     * @param callback Function called upon receiving data payload with raw pointer and size.
+     */
+    using ICommunication::registerReceiveViewCallback;
+    void registerReceiveViewCallback(DataViewCallback callback) override;
 
     bool isOpen() const override;
     bool isConnected() const override;
@@ -59,6 +70,7 @@ private:
 
     mutable std::mutex m_callbackMutex;
     DataReceivedCallback m_callback;
+    DataViewCallback m_viewCallback;
 
     std::thread m_acceptThread;
     std::vector<std::thread> m_clientThreads;
