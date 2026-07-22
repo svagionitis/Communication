@@ -95,6 +95,7 @@ sudo apt install build-essential cmake ninja-build libgoogle-glog-dev libgtest-d
 | `BUILD_GUI` | `OFF` | Build the Qt6 QML GUI Client target |
 | `BUILD_TESTS` | `ON` | Build Google Test unit test suite |
 | `BUILD_BENCHMARKS` | `OFF` | Build SPSC Lock-Free vs Mutex Queue benchmark suite |
+| `BUILD_TELEMETRY_LOGGER` | `OFF` | Build high-frequency telemetry SQLite/CSV/Binary logger |
 | `WARNINGS_AS_ERRORS` | `OFF` | Treat all compiler warnings as errors (`-Werror` / `/WX`) |
 | `ENABLE_HARDENING` | `ON` | Enable security hardening flags (`-fstack-protector-strong`, `_FORTIFY_SOURCE=2`, RELRO, PIE) |
 | `ENABLE_ASAN` | `OFF` | Enable AddressSanitizer (ASan) for memory leak & buffer overflow detection |
@@ -124,6 +125,22 @@ ninja -C build lockfree_benchmark
 
 # Run benchmark (2,000,000 iterations by default)
 ./build/benchmark/lockfree_benchmark --iterations 2000000
+```
+
+### Run High-Frequency Telemetry Logger (SQLite / CSV / Binary)
+```bash
+# Build telemetry logger MVP
+cmake -B build -GNinja -DBUILD_TELEMETRY_LOGGER=ON
+ninja -C build telemetry_logger
+
+# 1. Run in SQLite format mode (default)
+./build/telemetry_logger/telemetry_logger --mode=simulate --format=sqlite --rate=20000 --duration=5 --out=telemetry.db
+
+# 2. Run in CSV text format mode
+./build/telemetry_logger/telemetry_logger --mode=simulate --format=csv --rate=20000 --duration=5 --out=telemetry.csv
+
+# 3. Run in Binary packed format mode
+./build/telemetry_logger/telemetry_logger --mode=simulate --format=binary --rate=20000 --duration=5 --out=telemetry.bin
 ```
 
 ### Run Command Line Client (CLI)
