@@ -64,13 +64,13 @@ TEST(ThreadSafeQueueTest, ConcurrentStressTest)
     constexpr int totalItems = 1000;
     std::atomic<int> receivedCount {0};
 
-    std::thread producer([&queue]() {
+    std::thread producer([&]() {
         for (int i = 0; i < totalItems; ++i) {
             queue.push(i);
         }
     });
 
-    std::thread consumer([&queue, &receivedCount]() {
+    std::thread consumer([&]() {
         for (int i = 0; i < totalItems; ++i) {
             auto item = queue.popFor(std::chrono::seconds(2));
             if (item.has_value()) {

@@ -103,7 +103,7 @@ TEST(LockFreeMemoryPoolTest, MultiThreadedConcurrentStressTest)
 
     std::vector<std::thread> threads;
     for (std::size_t i = 0; i < NumThreads; ++i) {
-        threads.emplace_back([&pool, i]() {
+        threads.emplace_back([&pool, i, TotalOpsPerThread]() {
             for (std::size_t op = 0; op < TotalOpsPerThread; ++op) {
                 SamplePacket* pkt = nullptr;
                 while ((pkt = pool.allocate()) == nullptr) {
