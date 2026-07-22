@@ -1,6 +1,11 @@
 find_package(SQLite3 REQUIRED)
 
 add_executable(tracking_hub
+    HttpClient.cpp
+    OpenSkyProvider.cpp
+    AisStreamProvider.cpp
+    SimulatorProvider.cpp
+    ProviderRegistry.cpp
     Parsers.cpp
     TrackingDatabase.cpp
     TrackingEngine.cpp

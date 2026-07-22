@@ -1,11 +1,12 @@
 /**
  * @file TrackingEngine.h
- * @brief Multi-threaded telemetry ingestion engine for AIS & ADS-B targets.
+ * @brief Multi-threaded telemetry ingestion engine for AIS & ADS-B targets with extensible provider registry.
  */
 
 #pragma once
 
 #include "LockFreeRingBuffer.h"
+#include "ProviderRegistry.h"
 #include "TargetTypes.h"
 #include "TrackingDatabase.h"
 
@@ -20,12 +21,12 @@ namespace Communication {
 
 class TrackingEngine {
 public:
-    TrackingEngine(std::size_t batchSize = 500);
+    explicit TrackingEngine(std::size_t batchSize = 500);
     ~TrackingEngine();
 
     bool openDatabase(const std::string& dbPath);
-    bool startSimulation(std::size_t ratePerSec, double durationSec);
-
+    void addProvider(std::unique_ptr<ITrackingProvider> provider);
+    bool start();
     void stop();
 
     std::size_t totalIngested() const { return m_totalIngested.load(); }
@@ -34,18 +35,18 @@ public:
 
 private:
     void consumerLoop();
-    void producerSimulateLoop(std::size_t ratePerSec, double durationSec);
+    void pushFrame(const TargetFrame& frame);
 
     TrackingDatabase m_db;
     std::size_t m_batchSize;
     std::unique_ptr<LockFreeRingBuffer<TargetFrame, 8192>> m_targetRing;
+    ProviderRegistry m_registry;
 
     std::atomic<bool> m_running {false};
     std::atomic<std::size_t> m_totalIngested {0};
     std::atomic<std::size_t> m_totalWritten {0};
     std::atomic<std::size_t> m_totalDropped {0};
 
-    std::thread m_producerThread;
     std::thread m_consumerThread;
 };
 

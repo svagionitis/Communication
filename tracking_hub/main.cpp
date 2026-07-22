@@ -3,12 +3,16 @@
  * @brief Main entry point for AIS & ADS-B Tracking Hub daemon CLI.
  */
 
+#include "AisStreamProvider.h"
+#include "OpenSkyProvider.h"
+#include "SimulatorProvider.h"
 #include "TrackingEngine.h"
 
 #include <cstdlib>
 #include <glog/logging.h>
 #include <iomanip>
 #include <iostream>
+#include <memory>
 #include <string>
 
 int main(int argc, char* argv[])
@@ -20,6 +24,8 @@ int main(int argc, char* argv[])
     std::string dbPath = "tracking.db";
     std::size_t ratePerSec = 10000;
     double durationSec = 5.0;
+    double openSkyIntervalSec = 5.0;
+    std::string aisApiKey = "";
     std::size_t batchSize = 500;
 
     for (int i = 1; i < argc; ++i) {
@@ -32,17 +38,23 @@ int main(int argc, char* argv[])
             ratePerSec = static_cast<std::size_t>(std::atoll(arg.substr(7).c_str()));
         } else if (arg.find("--duration=") == 0) {
             durationSec = std::atof(arg.substr(11).c_str());
+        } else if (arg.find("--opensky-interval=") == 0) {
+            openSkyIntervalSec = std::atof(arg.substr(18).c_str());
+        } else if (arg.find("--ais-key=") == 0) {
+            aisApiKey = arg.substr(10);
         } else if (arg.find("--batch-size=") == 0) {
             batchSize = static_cast<std::size_t>(std::atoll(arg.substr(13).c_str()));
         } else if (arg == "--help" || arg == "-h") {
             std::cout << "Usage: tracking_hub [OPTIONS]\n"
                       << "Options:\n"
-                      << "  --mode=simulate|live    Operating mode (default: simulate)\n"
-                      << "  --db=<PATH>             SQLite tracking database path (default: tracking.db)\n"
-                      << "  --rate=<RATE>           Simulation update rate in frames/sec (default: 10,000)\n"
-                      << "  --duration=<SECONDS>    Simulation duration in seconds (default: 5.0)\n"
-                      << "  --batch-size=<COUNT>    Database batch commit size (default: 500)\n"
-                      << "  -h, --help              Show this help message\n";
+                      << "  --mode=simulate|opensky|aisstream|all Operating provider mode (default: simulate)\n"
+                      << "  --db=<PATH>                           SQLite database output path (default: tracking.db)\n"
+                      << "  --rate=<RATE>                         Simulation update rate (default: 10,000)\n"
+                      << "  --opensky-interval=<SECONDS>          OpenSky REST API polling interval (default: 5.0s)\n"
+                      << "  --ais-key=<KEY>                       AISStream API key\n"
+                      << "  --duration=<SECONDS>                  Execution duration in seconds (default: 5.0)\n"
+                      << "  --batch-size=<COUNT>                  Database batch size (default: 500)\n"
+                      << "  -h, --help                            Show this help message\n";
             return 0;
         }
     }
@@ -50,9 +62,8 @@ int main(int argc, char* argv[])
     std::cout << "\n=========================================================\n";
     std::cout << "     AIS & ADS-B TELEMETRY TRACKING HUB Daemon          \n";
     std::cout << "=========================================================\n";
-    std::cout << " Ingestion Mode: " << mode << "\n";
+    std::cout << " Operating Mode: " << mode << "\n";
     std::cout << " Database Path:  " << dbPath << "\n";
-    std::cout << " Target Rate:    " << ratePerSec << " updates/sec\n";
     std::cout << " Batch Size:     " << batchSize << " records/batch\n";
     std::cout << " Duration:       " << durationSec << " seconds\n";
     std::cout << "=========================================================\n\n";
@@ -64,13 +75,21 @@ int main(int argc, char* argv[])
         return 1;
     }
 
+    if (mode == "opensky") {
+        engine.addProvider(std::make_unique<Communication::OpenSkyProvider>(openSkyIntervalSec));
+    } else if (mode == "aisstream") {
+        engine.addProvider(std::make_unique<Communication::AisStreamProvider>(aisApiKey));
+    } else if (mode == "all") {
+        engine.addProvider(std::make_unique<Communication::OpenSkyProvider>(openSkyIntervalSec));
+        engine.addProvider(std::make_unique<Communication::AisStreamProvider>(aisApiKey));
+        engine.addProvider(std::make_unique<Communication::SimulatorProvider>(ratePerSec));
+    } else {
+        engine.addProvider(std::make_unique<Communication::SimulatorProvider>(ratePerSec));
+    }
+
     auto startTime = std::chrono::high_resolution_clock::now();
 
-    if (mode == "simulate") {
-        engine.startSimulation(ratePerSec, durationSec);
-    } else {
-        LOG(INFO) << "Live ingestion active...";
-    }
+    engine.start();
 
     std::this_thread::sleep_for(std::chrono::duration<double>(durationSec + 0.2));
 

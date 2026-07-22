@@ -164,8 +164,14 @@ ninja -C build protocol_gateway
 cmake -B build -GNinja -DBUILD_TRACKING_HUB=ON
 ninja -C build tracking_hub
 
-# Run simulated multi-domain tracking feed (10,000 updates/sec for 5 seconds into SQLite)
+# 1. Run simulated multi-domain tracking feed (10,000 updates/sec for 5 seconds into SQLite)
 ./build/tracking_hub/tracking_hub --mode=simulate --rate=10000 --duration=5 --db=tracking.db
+
+# 2. Run live OpenSky Network ADS-B REST API provider (polls aircraft vectors every 5 seconds)
+./build/tracking_hub/tracking_hub --mode=opensky --opensky-interval=5 --duration=10 --db=opensky.db
+
+# 3. Run all telemetry tracking providers concurrently (OpenSky + AISStream + Simulator)
+./build/tracking_hub/tracking_hub --mode=all --duration=10 --db=all_tracking.db
 ```
 
 ### Run Command Line Client (CLI)
