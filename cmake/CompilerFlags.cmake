@@ -7,6 +7,10 @@ option(ENABLE_TSAN "Enable ThreadSanitizer (TSan)" OFF)
 option(ENABLE_HARDENING "Enable security hardening flags" ON)
 
 function(apply_compiler_flags TARGET_NAME)
+    if(WIN32)
+        target_compile_definitions(${TARGET_NAME} PRIVATE WIN32_LEAN_AND_MEAN NOMINMAX)
+    endif()
+
     if(MSVC)
         # MSVC Warnings
         target_compile_options(${TARGET_NAME} PRIVATE /W4)

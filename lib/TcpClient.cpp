@@ -427,7 +427,7 @@ void TcpClient::receiveLoop()
                 double delay = cfg.autoReconnect.initialDelayMs *
                                std::pow(cfg.autoReconnect.backoffMultiplier, static_cast<double>(attempt - 1));
                 uint32_t delayMs =
-                    static_cast<uint32_t>(std::min(static_cast<double>(cfg.autoReconnect.maxDelayMs), delay));
+                    static_cast<uint32_t>((std::min)(static_cast<double>(cfg.autoReconnect.maxDelayMs), delay));
                 LOG(INFO) << "TcpClient reconnect attempt " << attempt << " in " << delayMs << " ms...";
 
                 std::unique_lock<std::mutex> lockRec(m_reconnectMutex);
