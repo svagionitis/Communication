@@ -13,6 +13,11 @@
 
 namespace Communication {
 
+#ifdef _MSC_VER
+#pragma warning(push)
+#pragma warning(disable: 4324) // structure was padded due to alignment specifier (intentional alignas(64))
+#endif
+
 /**
  * @brief Single-Producer Single-Consumer (SPSC) Lock-Free Ring Buffer.
  * @tparam T Type of elements stored in the ring buffer.
@@ -131,5 +136,9 @@ private:
     alignas(CacheLineSize) std::atomic<std::size_t> m_tail;
     alignas(CacheLineSize) std::array<T, Capacity> m_buffer;
 };
+
+#ifdef _MSC_VER
+#pragma warning(pop)
+#endif
 
 } // namespace Communication

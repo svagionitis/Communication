@@ -14,6 +14,11 @@
 
 namespace Communication {
 
+#ifdef _MSC_VER
+#pragma warning(push)
+#pragma warning(disable: 4324) // structure was padded due to alignment specifier (intentional alignas(64))
+#endif
+
 /**
  * @brief Single-Producer Multi-Consumer (SPMC) Lock-Free Event Disruptor / Broadcast Bus.
  * Based on the LMAX Disruptor pattern.
@@ -196,5 +201,9 @@ private:
     alignas(64) std::array<ConsumerSequence, ConsumerCount> m_consumerHeads;
     alignas(64) std::array<T, Capacity> m_buffer;
 };
+
+#ifdef _MSC_VER
+#pragma warning(pop)
+#endif
 
 } // namespace Communication

@@ -15,6 +15,11 @@
 
 namespace Communication {
 
+#ifdef _MSC_VER
+#pragma warning(push)
+#pragma warning(disable: 4324) // structure was padded due to alignment specifier (intentional alignas(64))
+#endif
+
 /**
  * @brief Lock-Free Fixed-Block Memory Pool Allocator.
  * @tparam T Type of object stored in the memory pool.
@@ -147,5 +152,9 @@ private:
     alignas(64) std::atomic<std::size_t> m_allocatedCount;
     alignas(64) std::array<BlockNode, BlockCount> m_pool;
 };
+
+#ifdef _MSC_VER
+#pragma warning(pop)
+#endif
 
 } // namespace Communication

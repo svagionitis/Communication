@@ -12,8 +12,8 @@ function(apply_compiler_flags TARGET_NAME)
     endif()
 
     if(MSVC)
-        # MSVC Warnings
-        target_compile_options(${TARGET_NAME} PRIVATE /W4)
+        # MSVC Warnings (/wd4324: suppress intentional structure padding warnings due to alignas(64))
+        target_compile_options(${TARGET_NAME} PRIVATE /W4 /wd4324)
         if(WARNINGS_AS_ERRORS)
             target_compile_options(${TARGET_NAME} PRIVATE /WX)
         endif()

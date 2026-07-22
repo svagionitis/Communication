@@ -14,6 +14,11 @@
 
 namespace Communication {
 
+#ifdef _MSC_VER
+#pragma warning(push)
+#pragma warning(disable: 4324) // structure was padded due to alignment specifier (intentional alignas(64))
+#endif
+
 /**
  * @brief Represents a contiguous memory byte region.
  */
@@ -288,5 +293,9 @@ private:
     alignas(64) std::atomic<std::size_t> m_tail;
     alignas(64) std::array<uint8_t, Capacity> m_buffer;
 };
+
+#ifdef _MSC_VER
+#pragma warning(pop)
+#endif
 
 } // namespace Communication
