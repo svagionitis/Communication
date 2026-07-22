@@ -97,6 +97,7 @@ sudo apt install build-essential cmake ninja-build libgoogle-glog-dev libgtest-d
 | `BUILD_BENCHMARKS` | `OFF` | Build SPSC Lock-Free vs Mutex Queue benchmark suite |
 | `BUILD_TELEMETRY_LOGGER` | `OFF` | Build high-frequency telemetry SQLite/CSV/Binary logger |
 | `BUILD_PROTOCOL_GATEWAY` | `OFF` | Build low-latency full-duplex Serial-to-TCP protocol gateway |
+| `BUILD_TRACKING_HUB` | `OFF` | Build AIS and ADS-B telemetry tracking hub |
 | `WARNINGS_AS_ERRORS` | `OFF` | Treat all compiler warnings as errors (`-Werror` / `/WX`) |
 | `ENABLE_HARDENING` | `ON` | Enable security hardening flags (`-fstack-protector-strong`, `_FORTIFY_SOURCE=2`, RELRO, PIE) |
 | `ENABLE_ASAN` | `OFF` | Enable AddressSanitizer (ASan) for memory leak & buffer overflow detection |
@@ -155,6 +156,16 @@ ninja -C build protocol_gateway
 
 # Run live hardware bridge mode
 ./build/protocol_gateway/protocol_gateway --mode=bridge --device=/dev/ttyUSB0 --baud=115200 --host=192.168.1.100 --port=502
+```
+
+### Run AIS (Maritime) & ADS-B (Aviation) Telemetry Tracking Hub
+```bash
+# Build tracking hub MVP
+cmake -B build -GNinja -DBUILD_TRACKING_HUB=ON
+ninja -C build tracking_hub
+
+# Run simulated multi-domain tracking feed (10,000 updates/sec for 5 seconds into SQLite)
+./build/tracking_hub/tracking_hub --mode=simulate --rate=10000 --duration=5 --db=tracking.db
 ```
 
 ### Run Command Line Client (CLI)

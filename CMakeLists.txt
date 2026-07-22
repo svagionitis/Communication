@@ -12,6 +12,7 @@ option(BUILD_TESTS "Build unit tests" ON)
 option(BUILD_BENCHMARKS "Build lock-free vs mutex queue benchmark suite" OFF)
 option(BUILD_TELEMETRY_LOGGER "Build high-frequency telemetry SQLite/CSV/Binary logger" OFF)
 option(BUILD_PROTOCOL_GATEWAY "Build low-latency full-duplex serial-to-TCP protocol gateway" OFF)
+option(BUILD_TRACKING_HUB "Build AIS and ADS-B telemetry tracking hub" OFF)
 
 # Compiler Flags & Modules
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake")
@@ -52,6 +53,11 @@ if(BUILD_PROTOCOL_GATEWAY)
     add_subdirectory(protocol_gateway)
 endif()
 
+# AIS & ADS-B Tracking Hub (Conditional)
+if(BUILD_TRACKING_HUB)
+    add_subdirectory(tracking_hub)
+endif()
+
 # Clang-Format Code Formatting Target
 find_program(CLANG_FORMAT_BIN NAMES clang-format clang-format-15 clang-format-14 clang-format-12)
 if(CLANG_FORMAT_BIN)
@@ -69,6 +75,8 @@ if(CLANG_FORMAT_BIN)
         ${CMAKE_CURRENT_SOURCE_DIR}/telemetry_logger/*.cpp
         ${CMAKE_CURRENT_SOURCE_DIR}/protocol_gateway/*.h
         ${CMAKE_CURRENT_SOURCE_DIR}/protocol_gateway/*.cpp
+        ${CMAKE_CURRENT_SOURCE_DIR}/tracking_hub/*.h
+        ${CMAKE_CURRENT_SOURCE_DIR}/tracking_hub/*.cpp
     )
     add_custom_target(format
         COMMAND ${CLANG_FORMAT_BIN} -i -style=file ${ALL_FORMAT_FILES}
