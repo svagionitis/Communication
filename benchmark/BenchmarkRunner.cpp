@@ -211,6 +211,72 @@ BenchmarkResult BenchmarkRunner::runMutexRingBuffer()
     return result;
 }
 
+BenchmarkResult BenchmarkRunner::runCircularByteRing()
+{
+    CircularByteRing<65536> byteRing;
+    LatencyCollector collector;
+    collector.reserve(m_messageCount);
+
+    std::atomic<bool> startFlag {false};
+
+    auto producerFunc = [&]() {
+        while (!startFlag.load(std::memory_order_acquire)) {
+            std::this_thread::yield();
+        }
+
+        for (uint64_t i = 0; i < m_messageCount; ++i) {
+            BenchmarkPacket packet;
+            packet.sequenceNumber = i;
+            packet.timestamp = std::chrono::high_resolution_clock::now();
+
+            while (!byteRing.writeExact(reinterpret_cast<const uint8_t*>(&packet), sizeof(packet))) {
+                std::this_thread::yield();
+            }
+        }
+    };
+
+    auto consumerFunc = [&]() {
+        while (!startFlag.load(std::memory_order_acquire)) {
+            std::this_thread::yield();
+        }
+
+        for (uint64_t i = 0; i < m_messageCount; ++i) {
+            BenchmarkPacket packet;
+            while (!byteRing.readExact(reinterpret_cast<uint8_t*>(&packet), sizeof(packet))) {
+                std::this_thread::yield();
+            }
+            auto now = std::chrono::high_resolution_clock::now();
+            double latencyNs = static_cast<double>(
+                std::chrono::duration_cast<std::chrono::nanoseconds>(now - packet.timestamp).count());
+            collector.record(latencyNs);
+        }
+    };
+
+    std::thread producer(producerFunc);
+    std::thread consumer(consumerFunc);
+
+    auto startTime = std::chrono::high_resolution_clock::now();
+    startFlag.store(true, std::memory_order_release);
+
+    producer.join();
+    consumer.join();
+    auto endTime = std::chrono::high_resolution_clock::now();
+
+    double totalTimeSec = std::chrono::duration<double>(endTime - startTime).count();
+
+    BenchmarkResult result {};
+    result.name = "CircularByteRing (Zero-Copy Stream 64KB)";
+    result.totalMessagesProcessed = m_messageCount;
+    result.totalMessagesDropped = 0;
+    result.totalTimeSeconds = totalTimeSec;
+    result.throughputMsgsPerSec = static_cast<double>(m_messageCount) / totalTimeSec;
+    result.throughputMBPerSec =
+        (static_cast<double>(m_messageCount * sizeof(BenchmarkPacket)) / (1024.0 * 1024.0)) / totalTimeSec;
+    result.latency = collector.computeStats();
+
+    return result;
+}
+
 void BenchmarkRunner::printResultsTable(const std::vector<BenchmarkResult>& results) const
 {
     std::cout << "\n==================================================================================================="

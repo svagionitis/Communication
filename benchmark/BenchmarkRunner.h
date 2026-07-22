@@ -6,6 +6,7 @@
 #pragma once
 
 #include "BenchmarkMetrics.h"
+#include "CircularByteRing.h"
 #include "LockFreeRingBuffer.h"
 #include "ThreadSafeQueue.h"
 
@@ -76,6 +77,7 @@ public:
     BenchmarkResult runLockFreeSPSC();
     BenchmarkResult runThreadSafeQueue();
     BenchmarkResult runMutexRingBuffer();
+    BenchmarkResult runCircularByteRing();
 
     void printResultsTable(const std::vector<BenchmarkResult>& results) const;
 

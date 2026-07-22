@@ -41,6 +41,10 @@ int main(int argc, char* argv[])
     auto lockFreeRes = runner.runLockFreeSPSC();
     std::cout << " Done.\n";
 
+    std::cout << "[INFO] Running CircularByteRing (Zero-Copy 64KB)..." << std::flush;
+    auto byteRingRes = runner.runCircularByteRing();
+    std::cout << " Done.\n";
+
     std::cout << "[INFO] Running MutexRingBuffer (Mutex 4096)..." << std::flush;
     auto mutexRingRes = runner.runMutexRingBuffer();
     std::cout << " Done.\n";
@@ -49,7 +53,7 @@ int main(int argc, char* argv[])
     auto threadSafeRes = runner.runThreadSafeQueue();
     std::cout << " Done.\n";
 
-    std::vector<Communication::BenchmarkResult> results = {lockFreeRes, mutexRingRes, threadSafeRes};
+    std::vector<Communication::BenchmarkResult> results = {lockFreeRes, byteRingRes, mutexRingRes, threadSafeRes};
     runner.printResultsTable(results);
 
     if (mutexRingRes.throughputMsgsPerSec > 0.0) {
