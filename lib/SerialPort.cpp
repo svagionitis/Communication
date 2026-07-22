@@ -25,7 +25,7 @@ SerialPort::SerialPort(SerialConfig config)
 
 SerialPort::~SerialPort()
 {
-    close();
+    SerialPort::close();
 }
 
 SerialPort::SerialPort(SerialPort&& other) noexcept

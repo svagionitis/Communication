@@ -17,7 +17,7 @@ UdpSocket::UdpSocket(UdpConfig config)
 
 UdpSocket::~UdpSocket()
 {
-    close();
+    UdpSocket::close();
 }
 
 UdpSocket::UdpSocket(UdpSocket&& other) noexcept

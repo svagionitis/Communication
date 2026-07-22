@@ -18,7 +18,7 @@ TcpServer::TcpServer(TcpConfig config)
 
 TcpServer::~TcpServer()
 {
-    close();
+    TcpServer::close();
 }
 
 bool TcpServer::open()

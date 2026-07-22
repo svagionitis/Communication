@@ -19,7 +19,7 @@ TcpClient::TcpClient(TcpConfig config)
 
 TcpClient::~TcpClient()
 {
-    close();
+    TcpClient::close();
 }
 
 TcpClient::TcpClient(TcpClient&& other) noexcept
