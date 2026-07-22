@@ -11,6 +11,8 @@ set(LIBRARY_HEADERS
     Types.h
     ThreadSafeQueue.h
     LockFreeRingBuffer.h
+    CircularByteRing.h
+    DisruptorBus.h
     TcpClient.h
     TcpServer.h
     UdpSocket.h

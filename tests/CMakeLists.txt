@@ -1,5 +1,5 @@
 enable_testing()
-add_executable(communication_tests unit_tests.cpp CircularByteRingTest.cpp)
+add_executable(communication_tests unit_tests.cpp CircularByteRingTest.cpp DisruptorBusTest.cpp)
 target_link_libraries(communication_tests PRIVATE Communication GTest::gtest GTest::gtest_main glog::glog)
 apply_compiler_flags(communication_tests)
 include(GoogleTest)

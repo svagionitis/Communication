@@ -277,6 +277,94 @@ BenchmarkResult BenchmarkRunner::runCircularByteRing()
     return result;
 }
 
+BenchmarkResult BenchmarkRunner::runDisruptorBus()
+{
+    constexpr std::size_t numConsumers = 3;
+    DisruptorBus<BenchmarkPacket, 4096, numConsumers> bus;
+    LatencyCollector collector;
+    collector.reserve(m_messageCount);
+
+    std::atomic<bool> startFlag {false};
+    std::atomic<bool> producerDone {false};
+
+    auto producerFunc = [&]() {
+        while (!startFlag.load(std::memory_order_acquire)) {
+            std::this_thread::yield();
+        }
+
+        for (uint64_t i = 0; i < m_messageCount; ++i) {
+            BenchmarkPacket packet;
+            packet.sequenceNumber = i;
+            packet.timestamp = std::chrono::high_resolution_clock::now();
+
+            while (!bus.publish(packet)) {
+                std::this_thread::yield();
+            }
+        }
+        producerDone.store(true);
+    };
+
+    auto consumerPrimaryFunc = [&]() {
+        while (!startFlag.load(std::memory_order_acquire)) {
+            std::this_thread::yield();
+        }
+
+        for (uint64_t i = 0; i < m_messageCount; ++i) {
+            BenchmarkPacket packet;
+            while (!bus.consume(0, packet)) {
+                std::this_thread::yield();
+            }
+            auto now = std::chrono::high_resolution_clock::now();
+            double latencyNs = static_cast<double>(
+                std::chrono::duration_cast<std::chrono::nanoseconds>(now - packet.timestamp).count());
+            collector.record(latencyNs);
+        }
+    };
+
+    auto consumerSecondaryFunc = [&](std::size_t id) {
+        while (!startFlag.load(std::memory_order_acquire)) {
+            std::this_thread::yield();
+        }
+
+        while (!producerDone.load(std::memory_order_acquire) || bus.available(id) > 0) {
+            BenchmarkPacket packet;
+            if (!bus.consume(id, packet)) {
+                std::this_thread::yield();
+            }
+        }
+    };
+
+    std::thread producer(producerFunc);
+    std::thread c0(consumerPrimaryFunc);
+    std::thread c1(consumerSecondaryFunc, 1);
+    std::thread c2(consumerSecondaryFunc, 2);
+
+    auto startTime = std::chrono::high_resolution_clock::now();
+    startFlag.store(true, std::memory_order_release);
+
+    producer.join();
+    c0.join();
+    c1.join();
+    c2.join();
+
+    auto endTime = std::chrono::high_resolution_clock::now();
+
+    double totalTimeSec = std::chrono::duration<double>(endTime - startTime).count();
+
+    BenchmarkResult result {};
+    result.name = "DisruptorBus (SPMC Broadcast x3)";
+    result.totalMessagesProcessed = m_messageCount * numConsumers;
+    result.totalMessagesDropped = 0;
+    result.totalTimeSeconds = totalTimeSec;
+    result.throughputMsgsPerSec = static_cast<double>(m_messageCount * numConsumers) / totalTimeSec;
+    result.throughputMBPerSec =
+        (static_cast<double>(m_messageCount * numConsumers * sizeof(BenchmarkPacket)) / (1024.0 * 1024.0)) /
+        totalTimeSec;
+    result.latency = collector.computeStats();
+
+    return result;
+}
+
 void BenchmarkRunner::printResultsTable(const std::vector<BenchmarkResult>& results) const
 {
     std::cout << "\n==================================================================================================="
