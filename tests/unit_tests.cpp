@@ -136,7 +136,7 @@ TEST(LockFreeRingBufferTest, ConcurrentSpscStressTest)
     LockFreeRingBuffer<int, 1024> ringBuffer;
     constexpr int totalElements = 100000;
 
-    std::thread producer([&ringBuffer]() {
+    std::thread producer([&]() {
         for (int i = 0; i < totalElements; ++i) {
             while (!ringBuffer.push(i)) {
                 std::this_thread::yield();
@@ -147,9 +147,9 @@ TEST(LockFreeRingBufferTest, ConcurrentSpscStressTest)
     std::vector<int> poppedItems;
     poppedItems.reserve(totalElements);
 
-    std::thread consumer([&ringBuffer, &poppedItems]() {
+    std::thread consumer([&]() {
         int item = 0;
-        while (poppedItems.size() < totalElements) {
+        while (poppedItems.size() < static_cast<std::size_t>(totalElements)) {
             if (ringBuffer.pop(item)) {
                 poppedItems.push_back(item);
             } else {
