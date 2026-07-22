@@ -11,6 +11,7 @@ option(BUILD_GUI "Build the Qt6 QML GUI Client" OFF)
 option(BUILD_TESTS "Build unit tests" ON)
 option(BUILD_BENCHMARKS "Build lock-free vs mutex queue benchmark suite" OFF)
 option(BUILD_TELEMETRY_LOGGER "Build high-frequency telemetry SQLite/CSV/Binary logger" OFF)
+option(BUILD_PROTOCOL_GATEWAY "Build low-latency full-duplex serial-to-TCP protocol gateway" OFF)
 
 # Compiler Flags & Modules
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake")
@@ -46,6 +47,11 @@ if(BUILD_TELEMETRY_LOGGER)
     add_subdirectory(telemetry_logger)
 endif()
 
+# Protocol Gateway (Conditional)
+if(BUILD_PROTOCOL_GATEWAY)
+    add_subdirectory(protocol_gateway)
+endif()
+
 # Clang-Format Code Formatting Target
 find_program(CLANG_FORMAT_BIN NAMES clang-format clang-format-15 clang-format-14 clang-format-12)
 if(CLANG_FORMAT_BIN)
@@ -61,6 +67,8 @@ if(CLANG_FORMAT_BIN)
         ${CMAKE_CURRENT_SOURCE_DIR}/benchmark/*.cpp
         ${CMAKE_CURRENT_SOURCE_DIR}/telemetry_logger/*.h
         ${CMAKE_CURRENT_SOURCE_DIR}/telemetry_logger/*.cpp
+        ${CMAKE_CURRENT_SOURCE_DIR}/protocol_gateway/*.h
+        ${CMAKE_CURRENT_SOURCE_DIR}/protocol_gateway/*.cpp
     )
     add_custom_target(format
         COMMAND ${CLANG_FORMAT_BIN} -i -style=file ${ALL_FORMAT_FILES}

@@ -96,6 +96,7 @@ sudo apt install build-essential cmake ninja-build libgoogle-glog-dev libgtest-d
 | `BUILD_TESTS` | `ON` | Build Google Test unit test suite |
 | `BUILD_BENCHMARKS` | `OFF` | Build SPSC Lock-Free vs Mutex Queue benchmark suite |
 | `BUILD_TELEMETRY_LOGGER` | `OFF` | Build high-frequency telemetry SQLite/CSV/Binary logger |
+| `BUILD_PROTOCOL_GATEWAY` | `OFF` | Build low-latency full-duplex Serial-to-TCP protocol gateway |
 | `WARNINGS_AS_ERRORS` | `OFF` | Treat all compiler warnings as errors (`-Werror` / `/WX`) |
 | `ENABLE_HARDENING` | `ON` | Enable security hardening flags (`-fstack-protector-strong`, `_FORTIFY_SOURCE=2`, RELRO, PIE) |
 | `ENABLE_ASAN` | `OFF` | Enable AddressSanitizer (ASan) for memory leak & buffer overflow detection |
@@ -141,6 +142,19 @@ ninja -C build telemetry_logger
 
 # 3. Run in Binary packed format mode
 ./build/telemetry_logger/telemetry_logger --mode=simulate --format=binary --rate=20000 --duration=5 --out=telemetry.bin
+```
+
+### Run Full-Duplex Industrial Protocol Gateway (Serial-to-TCP Bridge)
+```bash
+# Build protocol gateway MVP
+cmake -B build -GNinja -DBUILD_PROTOCOL_GATEWAY=ON
+ninja -C build protocol_gateway
+
+# Run full-duplex simulation benchmark mode
+./build/protocol_gateway/protocol_gateway --mode=simulate --messages=200000
+
+# Run live hardware bridge mode
+./build/protocol_gateway/protocol_gateway --mode=bridge --device=/dev/ttyUSB0 --baud=115200 --host=192.168.1.100 --port=502
 ```
 
 ### Run Command Line Client (CLI)
