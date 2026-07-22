@@ -9,6 +9,7 @@ set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 # Build Options
 option(BUILD_GUI "Build the Qt6 QML GUI Client" OFF)
 option(BUILD_TESTS "Build unit tests" ON)
+option(BUILD_BENCHMARKS "Build lock-free vs mutex queue benchmark suite" OFF)
 
 # Compiler Flags & Modules
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake")
@@ -34,6 +35,11 @@ if(BUILD_TESTS)
     add_subdirectory(tests)
 endif()
 
+# Benchmark Suite (Conditional)
+if(BUILD_BENCHMARKS)
+    add_subdirectory(benchmark)
+endif()
+
 # Clang-Format Code Formatting Target
 find_program(CLANG_FORMAT_BIN NAMES clang-format clang-format-15 clang-format-14 clang-format-12)
 if(CLANG_FORMAT_BIN)
@@ -45,6 +51,8 @@ if(CLANG_FORMAT_BIN)
         ${CMAKE_CURRENT_SOURCE_DIR}/gui/*.cpp
         ${CMAKE_CURRENT_SOURCE_DIR}/gui/*.qml
         ${CMAKE_CURRENT_SOURCE_DIR}/tests/*.cpp
+        ${CMAKE_CURRENT_SOURCE_DIR}/benchmark/*.h
+        ${CMAKE_CURRENT_SOURCE_DIR}/benchmark/*.cpp
     )
     add_custom_target(format
         COMMAND ${CLANG_FORMAT_BIN} -i -style=file ${ALL_FORMAT_FILES}

@@ -94,6 +94,7 @@ sudo apt install build-essential cmake ninja-build libgoogle-glog-dev libgtest-d
 |---|---|---|
 | `BUILD_GUI` | `OFF` | Build the Qt6 QML GUI Client target |
 | `BUILD_TESTS` | `ON` | Build Google Test unit test suite |
+| `BUILD_BENCHMARKS` | `OFF` | Build SPSC Lock-Free vs Mutex Queue benchmark suite |
 | `WARNINGS_AS_ERRORS` | `OFF` | Treat all compiler warnings as errors (`-Werror` / `/WX`) |
 | `ENABLE_HARDENING` | `ON` | Enable security hardening flags (`-fstack-protector-strong`, `_FORTIFY_SOURCE=2`, RELRO, PIE) |
 | `ENABLE_ASAN` | `OFF` | Enable AddressSanitizer (ASan) for memory leak & buffer overflow detection |
@@ -113,6 +114,16 @@ ninja -C build
 ### Run Unit Tests
 ```bash
 ctest --test-dir build --output-on-failure
+```
+
+### Run Lock-Free vs Mutex Benchmark Suite
+```bash
+# Build benchmark suite
+cmake -B build -GNinja -DBUILD_BENCHMARKS=ON
+ninja -C build lockfree_benchmark
+
+# Run benchmark (2,000,000 iterations by default)
+./build/benchmark/lockfree_benchmark --iterations 2000000
 ```
 
 ### Run Command Line Client (CLI)
