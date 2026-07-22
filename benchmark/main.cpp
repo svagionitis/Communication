@@ -41,6 +41,10 @@ int main(int argc, char* argv[])
     auto lockFreeRes = runner.runLockFreeSPSC();
     std::cout << " Done.\n";
 
+    std::cout << "[INFO] Running LockFreeMemoryPool (O(1) Alloc 4K)..." << std::flush;
+    auto memPoolRes = runner.runMemoryPoolBenchmark();
+    std::cout << " Done.\n";
+
     std::cout << "[INFO] Running DisruptorBus (SPMC Broadcast x3)..." << std::flush;
     auto disruptorRes = runner.runDisruptorBus();
     std::cout << " Done.\n";
@@ -57,8 +61,8 @@ int main(int argc, char* argv[])
     auto threadSafeRes = runner.runThreadSafeQueue();
     std::cout << " Done.\n";
 
-    std::vector<Communication::BenchmarkResult> results = {lockFreeRes, disruptorRes, byteRingRes, mutexRingRes,
-                                                           threadSafeRes};
+    std::vector<Communication::BenchmarkResult> results = {lockFreeRes, memPoolRes,   disruptorRes,
+                                                           byteRingRes, mutexRingRes, threadSafeRes};
     runner.printResultsTable(results);
 
     if (mutexRingRes.throughputMsgsPerSec > 0.0) {

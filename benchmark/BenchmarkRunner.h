@@ -8,6 +8,7 @@
 #include "BenchmarkMetrics.h"
 #include "CircularByteRing.h"
 #include "DisruptorBus.h"
+#include "LockFreeMemoryPool.h"
 #include "LockFreeRingBuffer.h"
 #include "ThreadSafeQueue.h"
 
@@ -80,6 +81,7 @@ public:
     BenchmarkResult runMutexRingBuffer();
     BenchmarkResult runCircularByteRing();
     BenchmarkResult runDisruptorBus();
+    BenchmarkResult runMemoryPoolBenchmark();
 
     void printResultsTable(const std::vector<BenchmarkResult>& results) const;
 

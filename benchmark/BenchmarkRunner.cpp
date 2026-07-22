@@ -365,6 +365,58 @@ BenchmarkResult BenchmarkRunner::runDisruptorBus()
     return result;
 }
 
+BenchmarkResult BenchmarkRunner::runMemoryPoolBenchmark()
+{
+    LockFreeMemoryPool<BenchmarkPacket, 4096> pool;
+    LatencyCollector collector;
+    collector.reserve(m_messageCount);
+
+    std::atomic<bool> startFlag {false};
+
+    auto workerFunc = [&]() {
+        while (!startFlag.load(std::memory_order_acquire)) {
+            std::this_thread::yield();
+        }
+
+        for (uint64_t i = 0; i < m_messageCount; ++i) {
+            auto t0 = std::chrono::high_resolution_clock::now();
+            BenchmarkPacket* pkt = nullptr;
+            while ((pkt = pool.allocate()) == nullptr) {
+                std::this_thread::yield();
+            }
+            auto t1 = std::chrono::high_resolution_clock::now();
+            pkt->sequenceNumber = i;
+            pool.deallocate(pkt);
+
+            double latencyNs =
+                static_cast<double>(std::chrono::duration_cast<std::chrono::nanoseconds>(t1 - t0).count());
+            collector.record(latencyNs);
+        }
+    };
+
+    std::thread worker(workerFunc);
+
+    auto startTime = std::chrono::high_resolution_clock::now();
+    startFlag.store(true, std::memory_order_release);
+
+    worker.join();
+    auto endTime = std::chrono::high_resolution_clock::now();
+
+    double totalTimeSec = std::chrono::duration<double>(endTime - startTime).count();
+
+    BenchmarkResult result {};
+    result.name = "LockFreeMemoryPool (O(1) Alloc 4K)";
+    result.totalMessagesProcessed = m_messageCount;
+    result.totalMessagesDropped = 0;
+    result.totalTimeSeconds = totalTimeSec;
+    result.throughputMsgsPerSec = static_cast<double>(m_messageCount) / totalTimeSec;
+    result.throughputMBPerSec =
+        (static_cast<double>(m_messageCount * sizeof(BenchmarkPacket)) / (1024.0 * 1024.0)) / totalTimeSec;
+    result.latency = collector.computeStats();
+
+    return result;
+}
+
 void BenchmarkRunner::printResultsTable(const std::vector<BenchmarkResult>& results) const
 {
     std::cout << "\n==================================================================================================="

@@ -13,6 +13,7 @@ set(LIBRARY_HEADERS
     LockFreeRingBuffer.h
     CircularByteRing.h
     DisruptorBus.h
+    LockFreeMemoryPool.h
     TcpClient.h
     TcpServer.h
     UdpSocket.h
