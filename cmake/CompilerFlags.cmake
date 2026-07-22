@@ -20,7 +20,7 @@ function(apply_compiler_flags TARGET_NAME)
 
         # Security Hardening for MSVC
         if(ENABLE_HARDENING)
-            target_compile_options(${TARGET_NAME} PRIVATE /GS /NXCOMPAT /DYNAMICBASE)
+            target_compile_options(${TARGET_NAME} PRIVATE /GS)
             target_link_options(${TARGET_NAME} PRIVATE /NXCOMPAT /DYNAMICBASE)
         endif()
 
