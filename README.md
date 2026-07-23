@@ -94,6 +94,7 @@ sudo apt install build-essential cmake ninja-build libgoogle-glog-dev libgtest-d
 |---|---|---|
 | `BUILD_GUI` | `OFF` | Build the Qt6 QML GUI Client target |
 | `BUILD_TESTS` | `ON` | Build Google Test unit test suite |
+| `BUILD_ALL_SERVICES` / `BUILD_ALL` | `OFF` | Build benchmark, telemetry logger, protocol gateway, and tracking hub |
 | `BUILD_BENCHMARKS` | `OFF` | Build SPSC Lock-Free vs Mutex Queue benchmark suite |
 | `BUILD_TELEMETRY_LOGGER` | `OFF` | Build high-frequency telemetry SQLite/CSV/Binary logger |
 | `BUILD_PROTOCOL_GATEWAY` | `OFF` | Build low-latency full-duplex Serial-to-TCP protocol gateway |

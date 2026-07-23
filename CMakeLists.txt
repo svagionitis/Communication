@@ -9,10 +9,19 @@ set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 # Build Options
 option(BUILD_GUI "Build the Qt6 QML GUI Client" OFF)
 option(BUILD_TESTS "Build unit tests" ON)
+option(BUILD_ALL_SERVICES "Build benchmark, telemetry logger, protocol gateway, and tracking hub" OFF)
+option(BUILD_ALL "Build all optional targets (benchmarks, telemetry logger, protocol gateway, tracking hub)" OFF)
 option(BUILD_BENCHMARKS "Build lock-free vs mutex queue benchmark suite" OFF)
 option(BUILD_TELEMETRY_LOGGER "Build high-frequency telemetry SQLite/CSV/Binary logger" OFF)
 option(BUILD_PROTOCOL_GATEWAY "Build low-latency full-duplex serial-to-TCP protocol gateway" OFF)
 option(BUILD_TRACKING_HUB "Build AIS and ADS-B telemetry tracking hub" OFF)
+
+if(BUILD_ALL_SERVICES OR BUILD_ALL)
+    set(BUILD_BENCHMARKS ON CACHE BOOL "Build lock-free vs mutex queue benchmark suite" FORCE)
+    set(BUILD_TELEMETRY_LOGGER ON CACHE BOOL "Build high-frequency telemetry SQLite/CSV/Binary logger" FORCE)
+    set(BUILD_PROTOCOL_GATEWAY ON CACHE BOOL "Build low-latency full-duplex serial-to-TCP protocol gateway" FORCE)
+    set(BUILD_TRACKING_HUB ON CACHE BOOL "Build AIS and ADS-B telemetry tracking hub" FORCE)
+endif()
 
 # Compiler Flags & Modules
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake")
