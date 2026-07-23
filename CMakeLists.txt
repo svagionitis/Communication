@@ -5,6 +5,35 @@ set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
+set(CMAKE_POSITION_INDEPENDENT_CODE ON)
+set(CMAKE_INCLUDE_CURRENT_DIR ON)
+
+# Option to use non-transitive linking
+option(NON_TRANSITIVE "Option to use non-transitive linking" OFF)
+
+if(EXISTS ${CMAKE_SOURCE_DIR}/.git)
+    find_package(Git)
+endif()
+
+# Build type configuration
+if (CMAKE_BUILD_TYPE)
+   set(CMAKE_BUILD_TYPE ${CMAKE_BUILD_TYPE} CACHE
+       STRING "Choose the type of build, options are:
+- None (CMAKE_CXX_FLAGS)
+- Debug
+- Release
+- RelWithDebInfo
+- MinSizeRel.")
+else ()
+   set(CMAKE_BUILD_TYPE Debug CACHE
+       STRING "Choose the type of build, options are:
+- None (CMAKE_CXX_FLAGS)
+- Debug
+- Release
+- RelWithDebInfo
+- MinSizeRel."
+       FORCE)
+endif ()
 
 # Build Options
 option(BUILD_GUI "Build the Qt6 QML GUI Client" OFF)
@@ -107,3 +136,14 @@ if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/.git" AND EXISTS "${CMAKE_CURRENT_SOURCE_
     )
     message(STATUS "Git pre-commit hook successfully installed to .git/hooks/pre-commit")
 endif()
+
+if (MSVC)
+    message(STATUS "If using the 'Visual Studio' generator, now run")
+    message(STATUS "     cmake --build . [target] -- /maxcpucount[:N]")
+    message(STATUS "If using the 'NMake Makefiles' generator, now run")
+    message(STATUS "     cmake --build . [target]")
+else()
+    message(STATUS "If using the 'Unix Makefiles' generator, now run")
+    message(STATUS "     cmake --build . [target] -- -j$(nproc)")
+endif()
+
