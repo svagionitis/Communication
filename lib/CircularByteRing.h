@@ -11,12 +11,13 @@
 #include <cstddef>
 #include <cstdint>
 #include <cstring>
+#include <new>
 
 namespace Communication {
 
 #ifdef _MSC_VER
 #pragma warning(push)
-#pragma warning(disable: 4324) // structure was padded due to alignment specifier (intentional alignas(64))
+#pragma warning(disable : 4324) // structure was padded due to alignment specifier (intentional alignas(64))
 #endif
 
 /**
@@ -289,9 +290,15 @@ public:
     }
 
 private:
-    alignas(64) std::atomic<std::size_t> m_head;
-    alignas(64) std::atomic<std::size_t> m_tail;
-    alignas(64) std::array<uint8_t, Capacity> m_buffer;
+#ifdef __cpp_lib_hardware_interference_size
+    static constexpr std::size_t CacheLineSize = std::hardware_destructive_interference_size;
+#else
+    static constexpr std::size_t CacheLineSize = 64;
+#endif
+
+    alignas(CacheLineSize) std::atomic<std::size_t> m_head;
+    alignas(CacheLineSize) std::atomic<std::size_t> m_tail;
+    alignas(CacheLineSize) std::array<uint8_t, Capacity> m_buffer;
 };
 
 #ifdef _MSC_VER

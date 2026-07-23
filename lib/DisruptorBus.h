@@ -9,6 +9,7 @@
 #include <array>
 #include <atomic>
 #include <cstddef>
+#include <new>
 #include <type_traits>
 #include <utility>
 
@@ -16,7 +17,7 @@ namespace Communication {
 
 #ifdef _MSC_VER
 #pragma warning(push)
-#pragma warning(disable: 4324) // structure was padded due to alignment specifier (intentional alignas(64))
+#pragma warning(disable : 4324) // structure was padded due to alignment specifier (intentional alignas(64))
 #endif
 
 /**
@@ -193,13 +194,19 @@ public:
     constexpr std::size_t consumerCount() const { return ConsumerCount; }
 
 private:
-    struct alignas(64) ConsumerSequence {
+#ifdef __cpp_lib_hardware_interference_size
+    static constexpr std::size_t CacheLineSize = std::hardware_destructive_interference_size;
+#else
+    static constexpr std::size_t CacheLineSize = 64;
+#endif
+
+    struct alignas(CacheLineSize) ConsumerSequence {
         std::atomic<std::size_t> head {0};
     };
 
-    alignas(64) std::atomic<std::size_t> m_producerTail;
-    alignas(64) std::array<ConsumerSequence, ConsumerCount> m_consumerHeads;
-    alignas(64) std::array<T, Capacity> m_buffer;
+    alignas(CacheLineSize) std::atomic<std::size_t> m_producerTail;
+    alignas(CacheLineSize) std::array<ConsumerSequence, ConsumerCount> m_consumerHeads;
+    alignas(CacheLineSize) std::array<T, Capacity> m_buffer;
 };
 
 #ifdef _MSC_VER

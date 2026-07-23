@@ -17,7 +17,7 @@ namespace Communication {
 
 #ifdef _MSC_VER
 #pragma warning(push)
-#pragma warning(disable: 4324) // structure was padded due to alignment specifier (intentional alignas(64))
+#pragma warning(disable : 4324) // structure was padded due to alignment specifier (intentional alignas(64))
 #endif
 
 /**
@@ -143,14 +143,20 @@ public:
     constexpr std::size_t capacity() const { return BlockCount; }
 
 private:
+#ifdef __cpp_lib_hardware_interference_size
+    static constexpr std::size_t CacheLineSize = std::hardware_destructive_interference_size;
+#else
+    static constexpr std::size_t CacheLineSize = 64;
+#endif
+
     struct BlockNode {
         std::size_t nextIndex {invalidIndex};
         alignas(alignof(T)) uint8_t storage[sizeof(T)];
     };
 
-    alignas(64) std::atomic<std::size_t> m_freeListHead;
-    alignas(64) std::atomic<std::size_t> m_allocatedCount;
-    alignas(64) std::array<BlockNode, BlockCount> m_pool;
+    alignas(CacheLineSize) std::atomic<std::size_t> m_freeListHead;
+    alignas(CacheLineSize) std::atomic<std::size_t> m_allocatedCount;
+    alignas(CacheLineSize) std::array<BlockNode, BlockCount> m_pool;
 };
 
 #ifdef _MSC_VER
