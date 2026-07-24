@@ -226,6 +226,19 @@ void TcpServer::stopServer()
 #endif
         }
 
+        {
+            std::lock_guard<std::mutex> lockServer(m_serverMutex);
+            for (auto clientSock : m_clientSockets) {
+                if (clientSock != INVALID_SOCKET_HANDLE) {
+#ifdef _WIN32
+                    shutdown(clientSock, SD_BOTH);
+#else
+                    shutdown(clientSock, SHUT_RDWR);
+#endif
+                }
+            }
+        }
+
         if (m_acceptThread.joinable()) {
             m_acceptThread.join();
         }
@@ -252,6 +265,11 @@ void TcpServer::acceptLoop()
                 break;
             }
             continue;
+        }
+
+        if (!m_isRunning.load()) {
+            Platform::closeSocketHandle(clientSock);
+            break;
         }
 
         TcpConfig cfg;
